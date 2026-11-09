@@ -4,6 +4,22 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.2.0](https://github.com/Checkslip/sdk-go/compare/v0.1.1...v0.2.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **usage:** free_no_credit and free_hold_expired are deprecated and will disappear. The API no longer counts either reason, so both are always 0 and both fields will be removed from the response. They are optional from this version, so code that reads them has to handle them being absent. The counts they used to carry are in free_other.
+
+### Features
+
+* **usage:** add free_other and retire two free counts ([e20f717](https://github.com/Checkslip/sdk-go/commit/e20f717b9c9c2a55de8376aff56b52d0fb1d20cb))
+
+
+### Bug Fixes
+
+* **ci:** read the version constant past its trailing comment ([eb28255](https://github.com/Checkslip/sdk-go/commit/eb28255798632d349b56aaff3bd890ec9d7de2e0))
+
 ## [0.1.1](https://github.com/Checkslip/sdk-go/compare/v0.1.0...v0.1.1) (2026-11-09)
 
 
