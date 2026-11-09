@@ -6,6 +6,12 @@ name: Publish
 # zip to the release.
 
 on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to publish, for example v0.1.0.
+        required: true
+        type: string
   release:
     types: [published]
 
@@ -21,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
           persist-credentials: false
 
       - name: CI passed on this commit
@@ -47,10 +53,12 @@ jobs:
           go-version: stable
 
       - name: Tag matches the Version constant
+        env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           want="v$(sed -n 's/^const Version = "\(.*\)"$/\1/p' client.go)"
-          if [ "$GITHUB_REF_NAME" != "$want" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match Version $want in client.go"
+          if [ "$TAG" != "$want" ]; then
+            echo "::error::tag $TAG does not match Version $want in client.go"
             exit 1
           fi
 
@@ -58,13 +66,15 @@ jobs:
       - run: go test -race -count=1 ./...
 
       - name: Warm the module proxy
+        env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           set -euo pipefail
           module="$(go list -m)"
           escaped="$(printf '%s' "$module" | sed 's/\([A-Z]\)/!\L\1/g')"
           for attempt in $(seq 1 10); do
-            if curl -fsS "https://proxy.golang.org/${escaped}/@v/${GITHUB_REF_NAME}.info" >/dev/null; then
-              echo "proxy has ${module}@${GITHUB_REF_NAME}"
+            if curl -fsS "https://proxy.golang.org/${escaped}/@v/${TAG}.info" >/dev/null; then
+              echo "proxy has ${module}@${TAG}"
               exit 0
             fi
             echo "waiting for the proxy to pick up the tag ($attempt/10)"
@@ -78,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           module="$(go list -m)"
-          version="${GITHUB_REF_NAME}"
+          version="${TAG}"
           GOFLAGS=-mod=mod go mod download -x "${module}@${version}" 2>/dev/null || true
           zip="$(find "$(go env GOMODCACHE)/cache/download" -name "${version}.zip" | head -1)"
           if [ -n "$zip" ]; then
