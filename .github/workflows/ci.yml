@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Callable so the release job can run the full suite against its own release
+  # branch: a pull request opened with GITHUB_TOKEN does not raise events, so
+  # it would otherwise get no checks at all.
+  workflow_call:
+    inputs:
+      ref:
+        description: The ref to check out. Defaults to the triggering ref.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -46,6 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
