@@ -23,12 +23,25 @@ jobs:
     outputs:
       released: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
+      pr_branch: ${{ fromJSON(steps.release.outputs.pr || '{}').headBranchName || '' }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # A pull request opened with GITHUB_TOKEN raises no events either, so the
+  # release pull request would never be checked. Run the suite against its
+  # branch here, so nobody merges a release that does not build.
+  verify-release-pr:
+    needs: release-please
+    if: needs.release-please.outputs.pr_branch != ''
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.release-please.outputs.pr_branch }}
+    permissions:
+      contents: read
 
   # A release created with GITHUB_TOKEN does not raise the `release` event, so
   # the publish job is called from here instead of waiting for it.
