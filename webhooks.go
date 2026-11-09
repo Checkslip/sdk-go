@@ -399,6 +399,9 @@ func (s *WebhookDeliveriesService) Get(ctx context.Context, deliveryID string, o
 	if _, err := s.c.doJSON(ctx, getReq("/api/webhooks/deliveries/"+pathEscape(deliveryID), nil, opts), &out); err != nil {
 		return nil, err
 	}
+	if string(out.Payload) == "null" {
+		out.Payload = nil
+	}
 	return &out, nil
 }
 
