@@ -10,12 +10,22 @@ name: Release please
 on:
   push:
     branches: [main]
+  # Publishing an existing tag has to start here, not in publish.yml: the OIDC
+  # workflow_ref claim names the workflow that started the run, and the
+  # registries trust this file.
+  workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: Publish this existing tag instead of cutting a release, for example v0.1.1.
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   release-please:
+    if: inputs.publish_tag == ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,7 +46,7 @@ jobs:
   # branch here, so nobody merges a release that does not build.
   verify-release-pr:
     needs: release-please
-    if: needs.release-please.outputs.pr_branch != ''
+    if: inputs.publish_tag == '' && needs.release-please.outputs.pr_branch != ''
     uses: ./.github/workflows/ci.yml
     with:
       ref: ${{ needs.release-please.outputs.pr_branch }}
@@ -47,10 +57,12 @@ jobs:
   # the publish job is called from here instead of waiting for it.
   publish:
     needs: release-please
-    if: needs.release-please.outputs.released == 'true'
+    if: |
+      always() && (inputs.publish_tag != ''
+      || needs.release-please.outputs.released == 'true')
     uses: ./.github/workflows/publish.yml
     with:
-      tag: ${{ needs.release-please.outputs.tag }}
+      tag: ${{ inputs.publish_tag != '' && inputs.publish_tag || needs.release-please.outputs.tag }}
     permissions:
       contents: write
     secrets: inherit

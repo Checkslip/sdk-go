@@ -12,12 +12,6 @@ on:
         description: The tag to publish, for example v0.1.0.
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: The tag to publish, for example v0.1.0.
-        required: true
-        type: string
   release:
     types: [published]
 
