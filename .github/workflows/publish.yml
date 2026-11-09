@@ -12,6 +12,12 @@ on:
         description: The tag to publish, for example v0.1.0.
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to publish, for example v0.1.0.
+        required: true
+        type: string
   release:
     types: [published]
 
@@ -36,16 +42,26 @@ jobs:
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
+          # Ask the other workflows by file name. Counting every check run on
+          # the commit would include this job, which waits for itself forever.
           for attempt in $(seq 1 40); do
-            state="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs" \
-              --jq '[.check_runs[] | select(.name != "Warm the module proxy")] | if length == 0 then "pending" elif any(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out") then "failed" elif all(.status == "completed") then "passed" else "pending" end')"
-            case "$state" in
-              passed) echo "checks passed for $sha"; exit 0 ;;
-              failed) echo "::error::checks failed for $sha; not releasing"; exit 1 ;;
-              *) echo "waiting for checks on $sha ($attempt/40)"; sleep 30 ;;
-            esac
+            pending=0
+            failed=0
+            for wf in ci.yml commits.yml; do
+              state="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/runs?head_sha=${sha}&per_page=1" \
+                --jq '.workflow_runs[0] | if . == null then "missing" elif .status != "completed" then "running" else .conclusion end')"
+              case "$state" in
+                success) ;;
+                missing|running) pending=1 ;;
+                *) echo "::error::${wf} on ${sha} concluded ${state}"; failed=1 ;;
+              esac
+            done
+            if [ "$failed" = 1 ]; then exit 1; fi
+            if [ "$pending" = 0 ]; then echo "ci.yml and commits.yml passed for ${sha}"; exit 0; fi
+            echo "waiting for the checks on ${sha} (${attempt}/40)"
+            sleep 20
           done
-          echo "::error::checks did not finish in time for $sha"
+          echo "::error::the checks did not finish in time for ${sha}"
           exit 1
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
