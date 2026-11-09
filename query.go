@@ -53,6 +53,13 @@ func multi[S ~string](q query, key string, vs []S) {
 	}
 }
 
+// multiInt repeats key once per value, as style=form with explode=true asks.
+func multiInt(q query, key string, vs []int) {
+	for _, v := range vs {
+		url.Values(q).Add(key, strconv.Itoa(v))
+	}
+}
+
 func (q query) page(o ListOptions) {
 	q.int("limit", o.Limit)
 	q.str("cursor", o.Cursor)
