@@ -153,9 +153,8 @@ type SlipCheck struct {
 	// Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING.
 	Outcome   Outcome   `json:"outcome"`
 	CheckedAt time.Time `json:"checked_at"`
-	// latency_ms, upstream_ms and checked_elsewhere are being withdrawn from
-	// the Checkslip API. The SDK does not carry them, so your code will not
-	// break when the API stops sending them.
+	// latency_ms, upstream_ms and checked_elsewhere left the Checkslip API,
+	// so this client does not carry them.
 	// Slip is the transfer data. It may be a summary; see Slip.
 	Slip *Slip `json:"slip"`
 	// DuplicateOf is set when Outcome is DUPLICATE.
@@ -181,9 +180,8 @@ type SlipCheckRecord struct {
 	APIKeyID *string `json:"api_key_id,omitempty"`
 	// Status is the HTTP status the lookup was answered with.
 	Status int `json:"status,omitempty"`
-	// latency_ms, upstream_ms and checked_elsewhere are being withdrawn from
-	// the Checkslip API. The SDK does not carry them, so your code will not
-	// break when the API stops sending them.
+	// latency_ms, upstream_ms and checked_elsewhere left the Checkslip API,
+	// so this client does not carry them.
 	Channel         Channel      `json:"channel"`
 	Slip            *Slip        `json:"slip,omitempty"`
 	DuplicateOf     *DuplicateOf `json:"duplicate_of,omitempty"`
