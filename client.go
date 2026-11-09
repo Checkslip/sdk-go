@@ -16,6 +16,7 @@ import (
 )
 
 // Version is the version of this SDK. It is sent in the User-Agent header.
+// x-release-please-version
 const Version = "0.1.0"
 
 // DefaultBaseURL is the Checkslip API address used when WithBaseURL is not given.

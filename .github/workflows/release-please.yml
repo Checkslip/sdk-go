@@ -1,0 +1,27 @@
+name: Release please
+
+# Keeps a release pull request up to date from the Conventional Commits on
+# main: it works out the next version and writes the changelog. Merging that
+# pull request tags vX.Y.Z and publishes a GitHub Release.
+#
+# A Go module needs no registry and no credential: the module proxy and
+# pkg.go.dev read the tag from this repository.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
