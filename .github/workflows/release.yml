@@ -24,7 +24,7 @@ jobs:
       - run: go test -race -count=1 ./...
       - name: Tag matches Version constant
         run: |
-          want="v$(sed -n 's/^const Version = "\(.*\)"$/\1/p' client.go)"
+          want="v$(sed -n 's/^const Version = "\([^"]*\)".*/\1/p' client.go)"
           if [ "$GITHUB_REF_NAME" != "$want" ]; then
             echo "tag $GITHUB_REF_NAME does not match Version $want in client.go"
             exit 1
