@@ -309,8 +309,14 @@ func (c *Client) do(ctx context.Context, req *request) (*http.Response, *respons
 	target := req.absURL
 	if target == nil {
 		u := *c.baseURL
-		u.Path = strings.TrimRight(c.baseURL.Path, "/") + req.path
-		u.RawPath = ""
+		// req.path is already escaped; keep the escaping so an ID with a
+		// "/" stays one path segment.
+		raw := strings.TrimRight(c.baseURL.EscapedPath(), "/") + req.path
+		p, err := url.PathUnescape(raw)
+		if err != nil {
+			return nil, nil, fmt.Errorf("checkslip: bad request path %q: %w", req.path, err)
+		}
+		u.Path, u.RawPath = p, raw
 		if req.query != nil {
 			u.RawQuery = req.query.Encode()
 		}
