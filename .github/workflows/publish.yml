@@ -94,6 +94,7 @@ jobs:
 
       - name: Attach the module zip to the release
         env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
