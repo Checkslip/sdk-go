@@ -4,6 +4,18 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.1.1](https://github.com/Checkslip/sdk-go/compare/v0.1.0...v0.1.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** bump the version constant and stop CI cancelling itself ([2c6ab80](https://github.com/Checkslip/sdk-go/commit/2c6ab80093bc7485237fbc0f227a57df56d44825))
+* **ci:** call publish from the release job ([91cab7c](https://github.com/Checkslip/sdk-go/commit/91cab7c1ef17daa9724490113a47a9c47626ecad))
+* **ci:** check the release pull request before it is merged ([09968c9](https://github.com/Checkslip/sdk-go/commit/09968c9c4b30f94910c3e0b8dbce8538b94269a3))
+* **ci:** give the artifact step the tag it uses ([3259247](https://github.com/Checkslip/sdk-go/commit/3259247a930446275a0e475548e4c639a099d3fe))
+* **ci:** publish through the release workflow, never directly ([f075042](https://github.com/Checkslip/sdk-go/commit/f075042c54d9b119b37589a53e6b4ecb7c0abcfa))
+* **ci:** stop the publish job waiting for itself ([d3c2461](https://github.com/Checkslip/sdk-go/commit/d3c2461fd881fb37e5b1436b1e62a3acc28c4b2d))
+
 ## 0.1.0 (2026-11-09)
 
 
