@@ -29,9 +29,18 @@ type UsageCounts struct {
 	FreeInvalidFile int64 `json:"free_invalid_file"`
 	FreeQRTampered  int64 `json:"free_qr_tampered"`
 	FreeTooOld      int64 `json:"free_too_old"`
-	FreeNoCredit    int64 `json:"free_no_credit"`
+	// FreeNoCredit is always 0: the API no longer counts this reason, and the
+	// field is going away. These lookups are counted in FreeOther. An absent
+	// field reads as 0, so reading it stays safe either way.
+	FreeNoCredit int64 `json:"free_no_credit"`
+	// FreeHoldExpired is going away with FreeNoCredit and is counted in
+	// FreeOther the same way.
 	FreeHoldExpired int64 `json:"free_hold_expired"`
 	FreeSystemError int64 `json:"free_system_error"`
+	// FreeOther counts lookups that were not charged with no reason given,
+	// including the two deprecated reasons above and any reason this version
+	// does not know. It reads as 0 against a server that does not send it.
+	FreeOther int64 `json:"free_other"`
 }
 
 // UsageBucket is the usage of one day or month.

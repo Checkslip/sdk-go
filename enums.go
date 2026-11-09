@@ -48,9 +48,14 @@ const (
 	FreeReasonInvalidFile FreeReason = "INVALID_FILE"
 	FreeReasonQRTampered  FreeReason = "QR_TAMPERED"
 	FreeReasonTooOld      FreeReason = "TOO_OLD"
+	// FreeReasonNoCredit and FreeReasonHoldExpired are no longer sent. The
+	// API sends FreeReasonOther in their place.
 	FreeReasonNoCredit    FreeReason = "NO_CREDIT"
 	FreeReasonHoldExpired FreeReason = "HOLD_EXPIRED"
 	FreeReasonSystemError FreeReason = "SYSTEM_ERROR"
+	// FreeReasonOther means the lookup was not charged and no reason was
+	// given.
+	FreeReasonOther FreeReason = "OTHER"
 )
 
 // ChargedFilter selects lookups by whether they used a credit.
