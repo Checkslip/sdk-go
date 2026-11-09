@@ -153,7 +153,7 @@ func TestIdempotencyKeyFormat(t *testing.T) {
 func TestDownloadNotCutByAttemptTimeout(t *testing.T) {
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{\"kind\":\"API_REQUEST\"}\n"))
 		w.(http.Flusher).Flush()
 		time.Sleep(150 * time.Millisecond) // slower than the attempt timeout

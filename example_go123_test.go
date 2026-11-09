@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Checkslip/sdk-go"
+	checkslip "github.com/Checkslip/sdk-go"
 )
 
 func ExampleIter_All() {

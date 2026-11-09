@@ -263,7 +263,7 @@ func TestAcceptedIsNotAnError(t *testing.T) {
 
 	t.Run("204 on a delete returns no error", func(t *testing.T) {
 		c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		})
 		if err := c.Webhooks.Endpoints.Delete(context.Background(), "ep_1"); err != nil {
 			t.Fatalf("204 must not be an error: %v", err)

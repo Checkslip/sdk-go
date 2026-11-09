@@ -136,7 +136,7 @@ type LedgerParams struct {
 	From, To time.Time
 }
 
-// Ledger returns one page of credit balance changes, newest first:
+// List returns one page of credit balance changes, newest first:
 // purchases, lookups that used a credit, lookups that did not (with the
 // reason in FreeReason) and credits that expired. One call covers at most 31
 // days.
@@ -173,7 +173,7 @@ func (s *BillingLedgerService) ListAll(ctx context.Context, params *LedgerParams
 	})
 }
 
-// Get is a purchase of credits.
+// Order is a purchase of credits.
 type Order struct {
 	ID            string        `json:"id"`
 	Status        OrderStatus   `json:"status"`
@@ -198,7 +198,7 @@ type OrdersParams struct {
 	Status OrderStatus
 }
 
-// Orders returns one page of credit orders, newest first.
+// List returns one page of credit orders, newest first.
 func (s *BillingOrdersService) List(ctx context.Context, params *OrdersParams, opts ...RequestOption) (*Page[Order], error) {
 	q := query{}
 	if params != nil {
@@ -224,7 +224,7 @@ func (s *BillingOrdersService) ListAll(ctx context.Context, params *OrdersParams
 	})
 }
 
-// Order returns one credit order.
+// Get returns one credit order.
 func (s *BillingOrdersService) Get(ctx context.Context, orderID string, opts ...RequestOption) (*Order, error) {
 	if orderID == "" {
 		return nil, errors.New("checkslip: order ID is required")
@@ -279,7 +279,7 @@ type PackageList struct {
 	Items            []Package `json:"items"`
 }
 
-// Packages returns every credit package with its price, credits and
+// List returns every credit package with its price, credits and
 // validity. One credit covers one transfer lookup.
 func (s *BillingPackagesService) List(ctx context.Context, opts ...RequestOption) (*PackageList, error) {
 	var out PackageList
@@ -289,7 +289,7 @@ func (s *BillingPackagesService) List(ctx context.Context, opts ...RequestOption
 	return &out, nil
 }
 
-// Get is a tax receipt for a paid order.
+// Receipt is a tax receipt for a paid order.
 type Receipt struct {
 	ID string `json:"id"`
 	// SellerReady reports whether the seller details are complete.
@@ -328,7 +328,7 @@ type ReceiptVAT struct {
 	Amount Money `json:"amount"`
 }
 
-// Receipts returns one page of receipts, newest first.
+// List returns one page of receipts, newest first.
 func (s *BillingReceiptsService) List(ctx context.Context, params *ListOptions, opts ...RequestOption) (*Page[Receipt], error) {
 	q := query{}
 	if params != nil {
@@ -353,7 +353,7 @@ func (s *BillingReceiptsService) ListAll(ctx context.Context, params *ListOption
 	})
 }
 
-// Receipt returns one receipt.
+// Get returns one receipt.
 func (s *BillingReceiptsService) Get(ctx context.Context, receiptID string, opts ...RequestOption) (*Receipt, error) {
 	if receiptID == "" {
 		return nil, errors.New("checkslip: receipt ID is required")
