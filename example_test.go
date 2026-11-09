@@ -60,7 +60,8 @@ func ExampleSlipsService_Lookup() {
 		ClientReference: "order-1001",
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	switch res.Outcome {
 	case checkslip.OutcomeFound:
@@ -79,13 +80,15 @@ func ExampleSlipsService_LookupImage() {
 	client := checkslip.NewClient(os.Getenv("CHECKSLIP_API_KEY"))
 	f, err := os.Open("slip.jpg")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	defer f.Close()
 
 	res, err := client.Slips.LookupImage(context.Background(), &checkslip.LookupImageParams{Image: f})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	fmt.Println(res.Outcome)
 }
@@ -99,7 +102,8 @@ func ExampleWithIdempotencyKey() {
 		checkslip.WithIdempotencyKey("order-1001-slip-1"),
 	)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	fmt.Println(res.Outcome)
 }
@@ -133,7 +137,7 @@ func ExampleIter() {
 		fmt.Println(rec.RequestID, rec.Outcome)
 	}
 	if err := it.Err(); err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	// Output:
 	// r1 FOUND
@@ -143,7 +147,8 @@ func ExampleIter() {
 func ExampleWebhookVerifier_VerifyRequest() {
 	verifier, err := checkslip.NewWebhookVerifier(os.Getenv("CHECKSLIP_WEBHOOK_SECRET"))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	http.HandleFunc("/hooks/checkslip", func(w http.ResponseWriter, r *http.Request) {
 		ev, err := verifier.VerifyRequest(r)
@@ -175,7 +180,8 @@ func ExampleWebhookVerifier_Verify() {
 
 	verifier, err := checkslip.NewWebhookVerifier(secret)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	// The vector was signed in 2021. With the default 5-minute tolerance
 	// it is refused as a replay; turn the check off only to show the

@@ -331,13 +331,14 @@ func (c *Client) do(ctx context.Context, req *request) (*http.Response, *respons
 		}
 
 		var apiErr *Error
-		if err == nil {
+		switch {
+		case err == nil:
 			apiErr = readError(resp, key)
 			err = apiErr
-		} else if ctx.Err() != nil {
+		case ctx.Err() != nil:
 			// The caller gave up; do not wrap it as a network failure.
 			return nil, meta, ctx.Err()
-		} else {
+		default:
 			err = fmt.Errorf("checkslip: %s %s: %w", req.method, req.path, err)
 		}
 

@@ -50,10 +50,10 @@ func (it *Iter[T]) Next() bool {
 			return false
 		}
 		it.items = page.Items
-		switch {
-		case page.NextCursor == "":
+		switch page.NextCursor {
+		case "":
 			it.last = true
-		case page.NextCursor == it.cursor:
+		case it.cursor:
 			it.err = errCursorLoop
 			it.last = true
 		default:

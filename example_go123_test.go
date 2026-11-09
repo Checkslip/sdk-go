@@ -5,7 +5,6 @@ package checkslip_test
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/Checkslip/checkslip-go"
 )
@@ -17,7 +16,8 @@ func ExampleIter_All() {
 
 	for rec, err := range client.Slips.ListAll(context.Background(), nil).All() {
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			return
 		}
 		fmt.Println(rec.RequestID)
 	}

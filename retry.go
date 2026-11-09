@@ -90,12 +90,9 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 func NewIdempotencyKey() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		// crypto/rand does not fail on supported platforms; fall back to a
-		// time-based value rather than panic.
-		n := time.Now().UnixNano()
-		for i := range b {
-			b[i] = byte(n >> (8 * (i % 8)))
-		}
+		// crypto/rand does not fail on supported platforms. A guessable or
+		// repeated key would be worse than stopping.
+		panic("checkslip: crypto/rand failed: " + err.Error())
 	}
 	b[6] = (b[6] & 0x0f) | 0x40
 	b[8] = (b[8] & 0x3f) | 0x80

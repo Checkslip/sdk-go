@@ -14,7 +14,7 @@ func TestErrorFromProblem(t *testing.T) {
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.Header().Set("X-Request-Id", "0192f3a4-7b1c-7d2e-8f30-4a5b6c7d8e9f")
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"type":"https://checkslip.com/problems/validation-failed","title":"ข้อมูลที่ส่งมาไม่ถูกต้อง","status":400,"detail":"qr is empty","instance":"/api/slips/lookup","code":"VALIDATION_FAILED","errors":[{"pointer":"/qr","code":"REQUIRED"}]}`))
 	})
 	_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "x"}, WithIdempotencyKey("order-42"))
@@ -51,12 +51,12 @@ func TestErrorFromProblem(t *testing.T) {
 func TestErrorNonJSONBody(t *testing.T) {
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("<h1>nope</h1>"))
 	})
 	_, err := c.Billing.Balance(context.Background())
 	e := AsError(err)
-	if e == nil || e.StatusCode != 404 || e.Code != "" || e.Title != "Not Found" || string(e.Body) != "<h1>nope</h1>" {
+	if e == nil || e.StatusCode != http.StatusNotFound || e.Code != "" || e.Title != "Not Found" || string(e.Body) != "<h1>nope</h1>" {
 		t.Fatalf("got %+v", e)
 	}
 	if !IsNotFound(err) {

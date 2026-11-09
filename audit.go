@@ -327,7 +327,7 @@ func (s *AuditService) DownloadExport(ctx context.Context, exportID string, opts
 	if exportID == "" {
 		return nil, errors.New("checkslip: export ID is required")
 	}
-	resp, _, err := s.c.do(ctx, &request{
+	resp, _, err := s.c.do(ctx, &request{ //nolint:bodyclose // the caller closes the EvidenceFile
 		method: http.MethodGet, path: "/api/audit/exports/" + pathEscape(exportID) + "/file",
 		accept: "application/x-ndjson", idempotent: true, opts: opts,
 	})
