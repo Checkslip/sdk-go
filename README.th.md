@@ -16,7 +16,7 @@ go get github.com/Checkslip/sdk-go
 
 ## เริ่มใช้งาน
 
-สร้าง API key ได้ที่หน้า dashboard ของ Checkslip key ขึ้นต้นด้วย `csk_` อย่าเขียน key ไว้ในซอร์สโค้ด ให้ส่งเข้ามาทาง environment หรือ secret manager
+ออก API key ได้ที่หน้า dashboard ของ Checkslip key ขึ้นต้นด้วย `csk_` อย่าเขียน key ไว้ในซอร์สโค้ด ให้ส่งเข้ามาทาง environment หรือ secret manager
 
 ```go
 package main
