@@ -18,7 +18,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # github.workflow differs when this workflow is called by another one, which
+  # keeps a called run from cancelling the push-triggered run on the same ref.
+  group: ci-${{ github.workflow }}-${{ inputs.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
