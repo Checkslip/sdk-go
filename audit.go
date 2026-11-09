@@ -12,7 +12,39 @@ import (
 // AuditService reads the account's request records and activity, and builds
 // evidence files of them for an auditor, a bank or a court. It needs an API
 // key with audit:read; evidence files also need audit:export.
-type AuditService struct{ c *Client }
+type AuditService struct {
+	c *Client
+	// Events is account activity, such as API keys created or members removed.
+	Events *AuditEventsService
+	// Requests is the log of requests this account sent.
+	Requests *AuditRequestsService
+	// Checkpoints are the signed daily seals of the audit hash chain.
+	Checkpoints *AuditCheckpointsService
+	// Chain recomputes one day of the audit hash chain.
+	Chain *AuditChainService
+	// Exports builds evidence files for an auditor, a bank or a court.
+	Exports *AuditExportsService
+	// Get are the public keys that sign checkpoints.
+	SigningKeys *AuditSigningKeysService
+}
+
+// AuditEventsService reads account activity.
+type AuditEventsService struct{ c *Client }
+
+// AuditRequestsService reads the account's request log.
+type AuditRequestsService struct{ c *Client }
+
+// AuditCheckpointsService reads the signed seals of the audit hash chain.
+type AuditCheckpointsService struct{ c *Client }
+
+// AuditChainService recomputes a day of the audit hash chain.
+type AuditChainService struct{ c *Client }
+
+// AuditExportsService builds and downloads evidence files.
+type AuditExportsService struct{ c *Client }
+
+// AuditSigningKeysService reads the checkpoint signing keys.
+type AuditSigningKeysService struct{ c *Client }
 
 // Redaction notes a field removed from a record.
 type Redaction struct {
@@ -102,8 +134,8 @@ type ListAuditEventsParams struct {
 	TargetID   string
 }
 
-// ListEvents returns one page of account activity, newest first.
-func (s *AuditService) ListEvents(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) (*Page[AuditEventRecord], error) {
+// List returns one page of account activity, newest first.
+func (s *AuditEventsService) List(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) (*Page[AuditEventRecord], error) {
 	q := query{}
 	if params != nil {
 		q.page(params.ListOptions)
@@ -123,20 +155,20 @@ func (s *AuditService) ListEvents(ctx context.Context, params *ListAuditEventsPa
 	return &out, nil
 }
 
-// ListEventsAll walks every activity record that matches params.
-func (s *AuditService) ListEventsAll(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) *Iter[AuditEventRecord] {
+// ListAll walks every activity record that matches params.
+func (s *AuditEventsService) ListAll(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) *Iter[AuditEventRecord] {
 	p := ListAuditEventsParams{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[AuditEventRecord], error) {
 		p.Cursor = cursor
-		return s.ListEvents(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
-// GetEvent returns one activity record.
-func (s *AuditService) GetEvent(ctx context.Context, eventID string, opts ...RequestOption) (*AuditEventRecord, error) {
+// Get returns one activity record.
+func (s *AuditEventsService) Get(ctx context.Context, eventID string, opts ...RequestOption) (*AuditEventRecord, error) {
 	if eventID == "" {
 		return nil, errors.New("checkslip: event ID is required")
 	}
@@ -162,9 +194,9 @@ type ListRequestsParams struct {
 	QRSHA256 string
 }
 
-// ListRequests returns one page of the requests this account sent, newest
+// List returns one page of the requests this account sent, newest
 // first.
-func (s *AuditService) ListRequests(ctx context.Context, params *ListRequestsParams, opts ...RequestOption) (*Page[APIRequestRecord], error) {
+func (s *AuditRequestsService) List(ctx context.Context, params *ListRequestsParams, opts ...RequestOption) (*Page[APIRequestRecord], error) {
 	q := query{}
 	if params != nil {
 		q.page(params.ListOptions)
@@ -185,20 +217,20 @@ func (s *AuditService) ListRequests(ctx context.Context, params *ListRequestsPar
 	return &out, nil
 }
 
-// ListRequestsAll walks every request record that matches params.
-func (s *AuditService) ListRequestsAll(ctx context.Context, params *ListRequestsParams, opts ...RequestOption) *Iter[APIRequestRecord] {
+// ListAll walks every request record that matches params.
+func (s *AuditRequestsService) ListAll(ctx context.Context, params *ListRequestsParams, opts ...RequestOption) *Iter[APIRequestRecord] {
 	p := ListRequestsParams{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[APIRequestRecord], error) {
 		p.Cursor = cursor
-		return s.ListRequests(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
-// GetRequest returns one request record.
-func (s *AuditService) GetRequest(ctx context.Context, requestID string, opts ...RequestOption) (*APIRequestRecord, error) {
+// Get returns one request record.
+func (s *AuditRequestsService) Get(ctx context.Context, requestID string, opts ...RequestOption) (*APIRequestRecord, error) {
 	if requestID == "" {
 		return nil, errors.New("checkslip: request ID is required")
 	}
@@ -252,10 +284,10 @@ type EvidenceExport struct {
 	Manifest  *ExportManifest `json:"manifest,omitempty"`
 }
 
-// CreateExport starts building an evidence file. It returns at once with
+// Create starts building an evidence file. It returns at once with
 // State QUEUED; poll GetExport until it is READY or FAILED. The call always
 // carries an Idempotency-Key, so a retry returns the same file.
-func (s *AuditService) CreateExport(ctx context.Context, params *CreateEvidenceExportParams, opts ...RequestOption) (*EvidenceExport, error) {
+func (s *AuditExportsService) Create(ctx context.Context, params *CreateEvidenceExportParams, opts ...RequestOption) (*EvidenceExport, error) {
 	if params == nil || params.FromDay.IsZero() || params.ToDay.IsZero() {
 		return nil, errors.New("checkslip: CreateEvidenceExportParams.FromDay and ToDay are required")
 	}
@@ -273,8 +305,8 @@ func (s *AuditService) CreateExport(ctx context.Context, params *CreateEvidenceE
 	return &out, nil
 }
 
-// ListExports returns one page of evidence files, newest first.
-func (s *AuditService) ListExports(ctx context.Context, params *ListOptions, opts ...RequestOption) (*Page[EvidenceExport], error) {
+// List returns one page of evidence files, newest first.
+func (s *AuditExportsService) List(ctx context.Context, params *ListOptions, opts ...RequestOption) (*Page[EvidenceExport], error) {
 	q := query{}
 	if params != nil {
 		q.page(*params)
@@ -286,20 +318,20 @@ func (s *AuditService) ListExports(ctx context.Context, params *ListOptions, opt
 	return &out, nil
 }
 
-// ListExportsAll walks every evidence file.
-func (s *AuditService) ListExportsAll(ctx context.Context, params *ListOptions, opts ...RequestOption) *Iter[EvidenceExport] {
+// ListAll walks every evidence file.
+func (s *AuditExportsService) ListAll(ctx context.Context, params *ListOptions, opts ...RequestOption) *Iter[EvidenceExport] {
 	p := ListOptions{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[EvidenceExport], error) {
 		p.Cursor = cursor
-		return s.ListExports(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
-// GetExport returns the state of one evidence file.
-func (s *AuditService) GetExport(ctx context.Context, exportID string, opts ...RequestOption) (*EvidenceExport, error) {
+// Get returns the state of one evidence file.
+func (s *AuditExportsService) Get(ctx context.Context, exportID string, opts ...RequestOption) (*EvidenceExport, error) {
 	if exportID == "" {
 		return nil, errors.New("checkslip: export ID is required")
 	}
@@ -320,16 +352,16 @@ type EvidenceFile struct {
 	Size int64
 }
 
-// DownloadExport downloads a READY evidence file. Before it is READY the API
+// Download downloads a READY evidence file. Before it is READY the API
 // answers 409; after ExpiresAt it answers 410. Every download is written to
 // the account activity.
-func (s *AuditService) DownloadExport(ctx context.Context, exportID string, opts ...RequestOption) (*EvidenceFile, error) {
+func (s *AuditExportsService) Download(ctx context.Context, exportID string, opts ...RequestOption) (*EvidenceFile, error) {
 	if exportID == "" {
 		return nil, errors.New("checkslip: export ID is required")
 	}
 	resp, _, err := s.c.do(ctx, &request{ //nolint:bodyclose // the caller closes the EvidenceFile
 		method: http.MethodGet, path: "/api/audit/exports/" + pathEscape(exportID) + "/file",
-		accept: "application/x-ndjson", idempotent: true, opts: opts,
+		accept: "application/x-ndjson", idempotent: true, stream: true, opts: opts,
 	})
 	if err != nil {
 		return nil, err
@@ -356,7 +388,7 @@ type JWK struct {
 
 // SigningKeys returns the public keys that sign the checkpoints in evidence
 // files, as a JWK Set. It needs no API key.
-func (s *AuditService) SigningKeys(ctx context.Context, opts ...RequestOption) ([]JWK, error) {
+func (s *AuditSigningKeysService) Get(ctx context.Context, opts ...RequestOption) ([]JWK, error) {
 	var out struct {
 		Keys []JWK `json:"keys"`
 	}
@@ -367,4 +399,123 @@ func (s *AuditService) SigningKeys(ctx context.Context, opts ...RequestOption) (
 		return nil, err
 	}
 	return out.Keys, nil
+}
+
+// CheckpointLane is one lane of a sealed checkpoint, with the row hash that
+// seals it.
+type CheckpointLane struct {
+	Lane    int    `json:"lane"`
+	Seq     int64  `json:"seq"`
+	RowHash string `json:"row_hash"`
+}
+
+// Checkpoint is a signed daily seal of one record stream. Verify the signature
+// with a key from SigningKeys.Get.
+type Checkpoint struct {
+	CheckpointID string           `json:"checkpoint_id"`
+	AccountID    string           `json:"account_id"`
+	Stream       Stream           `json:"stream"`
+	Day          Date             `json:"day"`
+	Sealed       bool             `json:"sealed"`
+	Lanes        []CheckpointLane `json:"lanes"`
+	CreatedAt    time.Time        `json:"created_at"`
+	KeyID        string           `json:"key_id"`
+	Signature    string           `json:"signature"`
+}
+
+// ListCheckpointsParams filters a checkpoint listing.
+type ListCheckpointsParams struct {
+	ListOptions
+	FromDay Date
+	ToDay   Date
+	Stream  Stream
+}
+
+// List returns one page of sealed checkpoints, newest first.
+func (s *AuditCheckpointsService) List(ctx context.Context, params *ListCheckpointsParams, opts ...RequestOption) (*Page[Checkpoint], error) {
+	q := query{}
+	if params != nil {
+		q.page(params.ListOptions)
+		q.date("from_day", params.FromDay)
+		q.date("to_day", params.ToDay)
+		q.str("stream", string(params.Stream))
+	}
+	var out Page[Checkpoint]
+	if _, err := s.c.doJSON(ctx, getReq("/api/audit/checkpoints", q.values(), opts), &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListAll walks every checkpoint that matches params.
+func (s *AuditCheckpointsService) ListAll(ctx context.Context, params *ListCheckpointsParams, opts ...RequestOption) *Iter[Checkpoint] {
+	p := ListCheckpointsParams{}
+	if params != nil {
+		p = *params
+	}
+	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[Checkpoint], error) {
+		p.Cursor = cursor
+		return s.List(ctx, &p, opts...)
+	})
+}
+
+// ListLatest returns the newest checkpoint of each record stream.
+//
+// The API wraps these in an object with nothing else in it, so the client
+// returns the checkpoints themselves.
+func (s *AuditCheckpointsService) ListLatest(ctx context.Context, opts ...RequestOption) ([]Checkpoint, error) {
+	var out struct {
+		Items []Checkpoint `json:"items"`
+	}
+	if _, err := s.c.doJSON(ctx, getReq("/api/audit/checkpoints/latest", nil, opts), &out); err != nil {
+		return nil, err
+	}
+	return out.Items, nil
+}
+
+// ChainCheckLane is the result of recomputing one lane of a day.
+type ChainCheckLane struct {
+	Lane   int  `json:"lane"`
+	Intact bool `json:"intact"`
+	// FirstBrokenSeq is the first row that did not match, when Intact is false.
+	FirstBrokenSeq *int64 `json:"first_broken_seq,omitempty"`
+	// MatchesCheckpoint reports whether the recomputed hash matches the seal.
+	MatchesCheckpoint *bool `json:"matches_checkpoint,omitempty"`
+}
+
+// ChainCheck is the result of recomputing one day of the audit hash chain.
+type ChainCheck struct {
+	Intact  bool             `json:"intact"`
+	Day     Date             `json:"day"`
+	Stream  Stream           `json:"stream"`
+	Checked int              `json:"checked"`
+	Lanes   []ChainCheckLane `json:"lanes"`
+}
+
+// CheckChainParams is the input of AuditChainService.Check.
+type CheckChainParams struct {
+	// Day is the UTC day to recompute. Required.
+	Day Date `json:"day"`
+	// Stream is the record stream to recompute. Required.
+	Stream Stream `json:"stream"`
+}
+
+// Check recomputes one day of the audit hash chain and compares it with the
+// sealed checkpoint. Intact is false when a row no longer matches its hash.
+func (s *AuditChainService) Check(ctx context.Context, params *CheckChainParams, opts ...RequestOption) (*ChainCheck, error) {
+	if params == nil || params.Day.IsZero() || params.Stream == "" {
+		return nil, errors.New("checkslip: CheckChainParams.Day and Stream are required")
+	}
+	body, err := jsonBody(params)
+	if err != nil {
+		return nil, err
+	}
+	var out ChainCheck
+	if _, err := s.c.doJSON(ctx, &request{
+		method: http.MethodPost, path: "/api/audit/chain/checks",
+		body: body, ctype: "application/json", opts: opts,
+	}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }

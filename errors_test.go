@@ -54,7 +54,7 @@ func TestErrorNonJSONBody(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("<h1>nope</h1>"))
 	})
-	_, err := c.Billing.Balance(context.Background())
+	_, err := c.Billing.Balance.Get(context.Background())
 	e := AsError(err)
 	if e == nil || e.StatusCode != http.StatusNotFound || e.Code != "" || e.Title != "Not Found" || string(e.Body) != "<h1>nope</h1>" {
 		t.Fatalf("got %+v", e)

@@ -3,6 +3,7 @@ package checkslip
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -38,7 +39,7 @@ func TestBaseURLValidation(t *testing.T) {
 
 func TestBadBaseURLFailsFirstRequest(t *testing.T) {
 	c := NewClient(testKey, WithBaseURL("http://example.com"))
-	_, err := c.Billing.Balance(context.Background())
+	_, err := c.Billing.Balance.Get(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "non-loopback") {
 		t.Fatalf("got %v, want base URL error", err)
 	}
@@ -51,7 +52,7 @@ func TestRequestHeaders(t *testing.T) {
 		writeJSON(w, 200, `{"credits":5}`)
 	}, WithUserAgent("my-shop/1.4"))
 
-	_, err := c.Billing.Balance(context.Background(),
+	_, err := c.Billing.Balance.Get(context.Background(),
 		WithHeader("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"),
 		WithHeader("Authorization", "Bearer stolen"),
 	)
@@ -99,7 +100,7 @@ func TestPerAttemptTimeout(t *testing.T) {
 		writeJSON(w, 200, `{"credits":1}`)
 	}, WithTimeout(50*time.Millisecond))
 
-	b, err := c.Billing.Balance(context.Background())
+	b, err := c.Billing.Balance.Get(context.Background())
 	if err != nil {
 		t.Fatalf("want success after a timed-out first attempt, got %v", err)
 	}
@@ -114,7 +115,7 @@ func TestContextCanceled(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	_, err := c.Billing.Balance(ctx)
+	_, err := c.Billing.Balance.Get(ctx)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("got %v, want context.DeadlineExceeded", err)
 	}
@@ -123,7 +124,7 @@ func TestContextCanceled(t *testing.T) {
 func TestNilContext(t *testing.T) {
 	c := NewClient(testKey)
 	//lint:ignore SA1012 testing the nil guard on purpose
-	_, err := c.Billing.Balance(nil) //nolint:staticcheck
+	_, err := c.Billing.Balance.Get(nil) //nolint:staticcheck
 	if err == nil {
 		t.Fatal("want error for nil context")
 	}
@@ -146,5 +147,35 @@ func TestIdempotencyKeyFormat(t *testing.T) {
 	}
 	if err := checkIdempotencyKey("tab\tkey"); err == nil {
 		t.Error("control character accepted")
+	}
+}
+
+func TestDownloadNotCutByAttemptTimeout(t *testing.T) {
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{\"kind\":\"API_REQUEST\"}\n"))
+		w.(http.Flusher).Flush()
+		time.Sleep(150 * time.Millisecond) // slower than the attempt timeout
+		_, _ = w.Write([]byte("{\"kind\":\"MANIFEST\"}\n"))
+	}, WithTimeout(50*time.Millisecond))
+	f, err := c.Audit.Exports.Download(context.Background(), "x1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	b, err := io.ReadAll(f)
+	if err != nil || !strings.Contains(string(b), "MANIFEST") {
+		t.Fatalf("read %q err %v", b, err)
+	}
+}
+
+func TestAttemptTimeoutError(t *testing.T) {
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}, WithTimeout(20*time.Millisecond), WithMaxRetries(0))
+	_, err := c.Billing.Balance.Get(context.Background())
+	if !errors.Is(err, errAttemptTimeout) {
+		t.Fatalf("got %v, want attempt timeout", err)
 	}
 }

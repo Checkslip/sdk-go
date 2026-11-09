@@ -76,7 +76,7 @@ func ExampleSlipsService_Lookup() {
 	// Output: FOUND 630210534087 50.00 THB 9681
 }
 
-func ExampleSlipsService_LookupImage() {
+func ExampleSlipsService_Lookup_image() {
 	client := checkslip.NewClient(os.Getenv("CHECKSLIP_API_KEY"))
 	f, err := os.Open("slip.jpg")
 	if err != nil {
@@ -85,7 +85,7 @@ func ExampleSlipsService_LookupImage() {
 	}
 	defer f.Close()
 
-	res, err := client.Slips.LookupImage(context.Background(), &checkslip.LookupImageParams{Image: f})
+	res, err := client.Slips.Lookup(context.Background(), &checkslip.LookupParams{Image: f})
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -113,7 +113,7 @@ func ExampleError() {
 	defer srv.Close()
 	client := checkslip.NewClient("csk_example", checkslip.WithBaseURL(srv.URL))
 
-	_, err := client.Billing.Balance(context.Background())
+	_, err := client.Billing.Balance.Get(context.Background())
 	var apiErr *checkslip.Error
 	if errors.As(err, &apiErr) {
 		fmt.Println(apiErr.StatusCode, apiErr.Code, apiErr.RequestID)

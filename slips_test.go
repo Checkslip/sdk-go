@@ -104,18 +104,18 @@ func TestLookupValidation(t *testing.T) {
 	}{
 		{"nil params", func() error { _, err := c.Slips.Lookup(context.Background(), nil); return err }},
 		{"empty qr", func() error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "  "}); return err }},
-		{"nil image", func() error { _, err := c.Slips.LookupImage(context.Background(), &LookupImageParams{}); return err }},
+		{"nil image", func() error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{}); return err }},
 		{"empty image", func() error {
-			_, err := c.Slips.LookupImage(context.Background(), &LookupImageParams{Image: strings.NewReader("")})
+			_, err := c.Slips.Lookup(context.Background(), &LookupParams{Image: strings.NewReader("")})
 			return err
 		}},
 		{"too large", func() error {
-			_, err := c.Slips.LookupImage(context.Background(), &LookupImageParams{Image: io.LimitReader(zeroReader{}, MaxImageSize+1)})
+			_, err := c.Slips.Lookup(context.Background(), &LookupParams{Image: io.LimitReader(zeroReader{}, MaxImageSize+1)})
 			return err
 		}},
 		{"get no id", func() error { _, err := c.Slips.Get(context.Background(), ""); return err }},
 		{"counts no range", func() error { _, err := c.Slips.Counts(context.Background(), &SlipCountsParams{}); return err }},
-		{"export no columns", func() error { _, err := c.Slips.CreateExport(context.Background(), &SlipExportParams{}); return err }},
+		{"export no columns", func() error { _, err := c.Slips.Exports.Create(context.Background(), &SlipExportParams{}); return err }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestLookupImage(t *testing.T) {
 		}
 		writeJSON(w, 200, foundJSON)
 	})
-	res, err := c.Slips.LookupImage(context.Background(), &LookupImageParams{
+	res, err := c.Slips.Lookup(context.Background(), &LookupParams{
 		Image: bytes.NewReader(png), Filename: "slip\"1.png", ClientReference: "order-7",
 	})
 	if err != nil {
@@ -330,14 +330,14 @@ func TestExports(t *testing.T) {
 		}
 	})
 	srvURL = c.baseURL.String()
-	exp, err := c.Slips.CreateExport(context.Background(), &SlipExportParams{Columns: []ExportColumn{ColumnRequestID, ColumnOutcome}})
+	exp, err := c.Slips.Exports.Create(context.Background(), &SlipExportParams{Columns: []ExportColumn{ColumnRequestID, ColumnOutcome}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if exp.State != ExportReady || len(exp.Parts) != 1 {
 		t.Fatalf("export %+v", exp)
 	}
-	body, err := c.Slips.DownloadExportPart(context.Background(), exp.Parts[0])
+	body, err := c.Slips.Exports.DownloadPart(context.Background(), exp.Parts[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +347,7 @@ func TestExports(t *testing.T) {
 		t.Fatalf("csv = %q", csv)
 	}
 
-	_, err = c.Slips.DownloadExportPart(context.Background(), ExportPart{Part: 2, URL: "https://evil.example/api/slips/exports/e1/parts/2?sig=x"})
+	_, err = c.Slips.Exports.DownloadPart(context.Background(), ExportPart{Part: 2, URL: "https://evil.example/api/slips/exports/e1/parts/2?sig=x"})
 	if err == nil || !strings.Contains(err.Error(), "not on the API host") {
 		t.Fatalf("other host: got %v", err)
 	}

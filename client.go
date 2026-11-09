@@ -85,6 +85,8 @@ func WithHTTPClient(hc *http.Client) Option {
 
 // WithTimeout sets how long a single attempt may take, including reading the
 // response body. Retries get a fresh timeout each. The default is 30 seconds.
+// For downloads (DownloadExport, DownloadExportPart) it covers the wait for
+// the response headers only; the context limits reading the file.
 // Zero or a negative value turns the per-attempt timeout off; the context
 // passed to each method still applies.
 func WithTimeout(d time.Duration) Option {
@@ -137,16 +139,33 @@ func NewClient(apiKey string, opts ...Option) *Client {
 			opt(c)
 		}
 	}
-	c.Slips = &SlipsService{c: c}
-	c.Billing = &BillingService{c: c}
+	c.Slips = &SlipsService{c: c, Exports: &SlipExportsService{c: c}}
+	c.Billing = &BillingService{
+		c:        c,
+		Balance:  &BillingBalanceService{c: c},
+		Info:     &BillingInfoService{c: c},
+		Packages: &BillingPackagesService{c: c},
+		Ledger:   &BillingLedgerService{c: c},
+		Orders:   &BillingOrdersService{c: c},
+		Receipts: &BillingReceiptsService{c: c},
+	}
 	c.Usage = &UsageService{c: c}
 	c.Banks = &BanksService{c: c}
 	c.Webhooks = &WebhooksService{
 		c:          c,
 		Endpoints:  &WebhookEndpointsService{c: c},
 		Deliveries: &WebhookDeliveriesService{c: c},
+		EventTypes: &WebhookEventTypesService{c: c},
 	}
-	c.Audit = &AuditService{c: c}
+	c.Audit = &AuditService{
+		c:           c,
+		Events:      &AuditEventsService{c: c},
+		Requests:    &AuditRequestsService{c: c},
+		Checkpoints: &AuditCheckpointsService{c: c},
+		Chain:       &AuditChainService{c: c},
+		Exports:     &AuditExportsService{c: c},
+		SigningKeys: &AuditSigningKeysService{c: c},
+	}
 	return c
 }
 
@@ -230,7 +249,11 @@ type request struct {
 	// absURL overrides baseURL+path (used for signed download links).
 	absURL *url.URL
 	noAuth bool
+	// stream is true for downloads whose body the caller reads.
+	stream bool
 }
+
+var errAttemptTimeout = errors.New("checkslip: request attempt timed out")
 
 type keyMode int
 
@@ -363,9 +386,19 @@ func (c *Client) do(ctx context.Context, req *request) (*http.Response, *respons
 }
 
 func (c *Client) send(ctx context.Context, req *request, target *url.URL, key string, extra http.Header) (*http.Response, error) {
-	actx, cancel := ctx, context.CancelFunc(func() {})
+	// The per-attempt timeout cancels with errAttemptTimeout as the cause.
+	// For a streamed download it stops once the headers have arrived, so a
+	// large file is limited only by ctx.
+	actx, cancelCause := context.WithCancelCause(ctx)
+	var timer *time.Timer
 	if c.timeout > 0 {
-		actx, cancel = context.WithTimeout(ctx, c.timeout)
+		timer = time.AfterFunc(c.timeout, func() { cancelCause(errAttemptTimeout) })
+	}
+	cancel := func() {
+		if timer != nil {
+			timer.Stop()
+		}
+		cancelCause(context.Canceled)
 	}
 	var body io.Reader
 	if req.body != nil {
@@ -402,8 +435,15 @@ func (c *Client) send(ctx context.Context, req *request, target *url.URL, key st
 	}
 	resp, err := c.httpClient.Do(hreq)
 	if err != nil {
+		timedOut := errors.Is(context.Cause(actx), errAttemptTimeout)
 		cancel()
+		if timedOut {
+			return nil, fmt.Errorf("%w (%v)", errAttemptTimeout, c.timeout)
+		}
 		return nil, err
+	}
+	if req.stream && timer != nil {
+		timer.Stop()
 	}
 	resp.Body = &cancelOnClose{ReadCloser: resp.Body, cancel: cancel}
 	return resp, nil

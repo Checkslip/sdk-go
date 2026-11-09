@@ -82,30 +82,30 @@ func TestBillingUsageBanks(t *testing.T) {
 	))
 	ctx := context.Background()
 
-	b, err := c.Billing.Balance(ctx)
+	b, err := c.Billing.Balance.Get(ctx)
 	if err != nil || b.Credits != 120 || !b.Low || b.ExpiresAt != nil || b.Basis != ThresholdAvg7Days {
 		t.Fatalf("balance %+v %v", b, err)
 	}
-	info, err := c.Billing.UpdateInfo(ctx, &BillingInfo{BuyerType: BuyerCompany, Name: "ACME", TaxID: "0105555555555"})
+	info, err := c.Billing.Info.Update(ctx, &BillingInfo{BuyerType: BuyerCompany, Name: "ACME", TaxID: "0105555555555"})
 	if err != nil || info.Name != "ACME" {
 		t.Fatalf("info %+v %v", info, err)
 	}
-	led, err := c.Billing.Ledger(ctx, &LedgerParams{Reason: []CreditReason{CreditPurchase, CreditExpire}})
+	led, err := c.Billing.Ledger.List(ctx, &LedgerParams{Reason: []CreditReason{CreditPurchase, CreditExpire}})
 	if err != nil || len(led.Items) != 1 || led.Items[0].Delta != -1 {
 		t.Fatalf("ledger %+v %v", led, err)
 	}
-	o, err := c.Billing.Order(ctx, "o1")
+	o, err := c.Billing.Orders.Get(ctx, "o1")
 	if err != nil || o.Amount.String() != "199.00 THB" {
 		t.Fatalf("order %+v %v", o, err)
 	}
-	if _, err := c.Billing.SyncOrder(ctx, "o1"); err != nil {
+	if _, err := c.Billing.Orders.Sync(ctx, "o1"); err != nil {
 		t.Fatal(err)
 	}
-	pk, err := c.Billing.Packages(ctx)
+	pk, err := c.Billing.Packages.List(ctx)
 	if err != nil || !pk.CheckoutOpen || pk.Items[0].Credits != 100 {
 		t.Fatalf("packages %+v %v", pk, err)
 	}
-	rc, err := c.Billing.Receipt(ctx, "rc1")
+	rc, err := c.Billing.Receipts.Get(ctx, "rc1")
 	if err != nil || rc.VAT.RateBP != 700 || rc.PaymentMethod != PaymentCard {
 		t.Fatalf("receipt %+v %v", rc, err)
 	}
@@ -212,7 +212,7 @@ func TestWebhookEndpointsAndDeliveries(t *testing.T) {
 	if err != nil || len(page.Items) != 1 {
 		t.Fatalf("deliveries %+v %v", page, err)
 	}
-	types, err := c.Webhooks.EventTypes(ctx)
+	types, err := c.Webhooks.EventTypes.List(ctx)
 	if err != nil || len(types) != 1 || !types[0].Subscribable {
 		t.Fatalf("types %+v %v", types, err)
 	}
@@ -246,19 +246,19 @@ func TestAudit(t *testing.T) {
 			}},
 	))
 	ctx := context.Background()
-	ev, err := c.Audit.ListEvents(ctx, &ListAuditEventsParams{Action: "api_key.*"})
+	ev, err := c.Audit.Events.List(ctx, &ListAuditEventsParams{Action: "api_key.*"})
 	if err != nil || ev.Items[0].Target.ID != "k1" || ev.Items[0].Actor.Type != ActorUser {
 		t.Fatalf("events %+v %v", ev, err)
 	}
-	rq, err := c.Audit.ListRequests(ctx, nil)
+	rq, err := c.Audit.Requests.List(ctx, nil)
 	if err != nil || rq.Items[0].Fingerprint.TransRef != "630210534087" || *rq.Items[0].Channel != ChannelAPI {
 		t.Fatalf("requests %+v %v", rq, err)
 	}
-	ex, err := c.Audit.CreateExport(ctx, &CreateEvidenceExportParams{FromDay: Date{2026, 11, 1}, ToDay: Date{2026, 11, 2}, Streams: []Stream{StreamAPIRequests}})
+	ex, err := c.Audit.Exports.Create(ctx, &CreateEvidenceExportParams{FromDay: Date{2026, 11, 1}, ToDay: Date{2026, 11, 2}, Streams: []Stream{StreamAPIRequests}})
 	if err != nil || ex.State != ExportQueued {
 		t.Fatalf("export %+v %v", ex, err)
 	}
-	f, err := c.Audit.DownloadExport(ctx, "x1")
+	f, err := c.Audit.Exports.Download(ctx, "x1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestAudit(t *testing.T) {
 	if !strings.Contains(string(line), "MANIFEST") {
 		t.Fatalf("file %q", line)
 	}
-	keys, err := c.Audit.SigningKeys(ctx)
+	keys, err := c.Audit.SigningKeys.Get(ctx)
 	if err != nil || keys[0].Curve != "Ed25519" {
 		t.Fatalf("keys %+v %v", keys, err)
 	}
@@ -287,6 +287,8 @@ func TestNoHiddenFields(t *testing.T) {
 		Balance{}, CreditEntry{}, Order{}, Receipt{}, Usage{}, SupportedBank{},
 		Endpoint{}, EndpointWithSecret{}, Delivery{}, DeliveryDetail{}, WebhookEvent{},
 		ListSlipsParams{}, ListRequestsParams{}, ListAuditEventsParams{},
+		Checkpoint{}, CheckpointLane{}, ChainCheck{}, ChainCheckLane{},
+		CheckChainParams{}, ListCheckpointsParams{}, LookupParams{},
 	}
 	seen := map[reflect.Type]bool{}
 	var walk func(rt reflect.Type, path string)

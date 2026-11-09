@@ -19,34 +19,39 @@ import (
 const MaxImageSize = 10 << 20
 
 // SlipsService looks up slips and reads the lookup history.
-type SlipsService struct{ c *Client }
+type SlipsService struct {
+	c *Client
+	// Exports builds CSV files of past lookups.
+	Exports *SlipExportsService
+}
+
+// SlipExportsService builds and downloads CSV files of past lookups.
+type SlipExportsService struct{ c *Client }
 
 // LookupParams is the input of SlipsService.Lookup.
+//
+// Set exactly one of QR or Image. Setting both, or neither, is an error the
+// client reports before it sends anything.
 type LookupParams struct {
-	// QR is the text of the QR code printed on the slip. Required.
-	QR string `json:"qr"`
+	// QR is the text of the QR code printed on the slip.
+	QR string `json:"qr,omitempty"`
+	// Image is the slip picture instead of its QR text: JPEG, PNG or WebP,
+	// at most 10 MB and 50 megapixels. The API reads the QR from the image
+	// and does not store the image. The client reads it fully into memory so
+	// the request can be sent again on a retry.
+	Image io.Reader `json:"-"`
+	// Filename is sent as the file name of an image upload. Optional.
+	Filename string `json:"-"`
+	// ContentType is the image type, such as "image/png". When empty the
+	// client detects it from the first bytes.
+	ContentType string `json:"-"`
 	// ClientReference is your own reference for this lookup, such as an
 	// order number. It comes back in the answer, the history and webhooks.
 	ClientReference string `json:"client_reference,omitempty"`
 }
 
-// LookupImageParams is the input of SlipsService.LookupImage.
-type LookupImageParams struct {
-	// Image is the slip picture: JPEG, PNG or WebP, at most 10 MB and 50
-	// megapixels. Required. The client reads it fully into memory so the
-	// request can be sent again on a retry.
-	Image io.Reader
-	// Filename is sent as the file name of the upload. Optional.
-	Filename string
-	// ContentType is the image type, such as "image/png". When empty the
-	// client detects it from the first bytes.
-	ContentType string
-	// ClientReference is your own reference for this lookup. Optional.
-	ClientReference string
-}
-
-// Lookup sends the QR text of a slip and asks the sending bank for the
-// transfer it holds.
+// Lookup asks the sending bank for the transfer a slip refers to. Pass either
+// the QR text of the slip in QR, or the slip image in Image.
 //
 // The answer's Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING. Only FOUND
 // uses a credit. A QR the API cannot use comes back as an *Error with a code
@@ -56,23 +61,24 @@ type LookupImageParams struct {
 // WithIdempotencyKey, so retries never charge twice. The key used is in
 // SlipCheck.IdempotencyKey.
 func (s *SlipsService) Lookup(ctx context.Context, params *LookupParams, opts ...RequestOption) (*SlipCheck, error) {
-	if params == nil || strings.TrimSpace(params.QR) == "" {
-		return nil, errors.New("checkslip: LookupParams.QR is required")
+	if params == nil {
+		return nil, errors.New("checkslip: LookupParams is required")
 	}
-	body, err := jsonBody(params)
-	if err != nil {
-		return nil, err
+	hasQR := strings.TrimSpace(params.QR) != ""
+	hasImage := params.Image != nil
+	switch {
+	case hasQR && hasImage:
+		return nil, errors.New("checkslip: set either LookupParams.QR or LookupParams.Image, not both")
+	case !hasQR && !hasImage:
+		return nil, errors.New("checkslip: LookupParams needs either QR or Image")
+	case hasQR:
+		body, err := jsonBody(params)
+		if err != nil {
+			return nil, err
+		}
+		return s.lookup(ctx, body, "application/json", opts)
 	}
-	return s.lookup(ctx, body, "application/json", opts)
-}
 
-// LookupImage uploads a slip image instead of its QR text. The API reads the
-// QR from the image and then works like Lookup. The image itself is not
-// stored.
-func (s *SlipsService) LookupImage(ctx context.Context, params *LookupImageParams, opts ...RequestOption) (*SlipCheck, error) {
-	if params == nil || params.Image == nil {
-		return nil, errors.New("checkslip: LookupImageParams.Image is required")
-	}
 	img, err := io.ReadAll(io.LimitReader(params.Image, MaxImageSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("checkslip: read image: %w", err)
@@ -327,11 +333,11 @@ type ExportPart struct {
 	URLExpiresAt time.Time `json:"url_expires_at"`
 }
 
-// CreateExport starts a CSV export of the lookup history. Up to 1,000,000
+// Create starts a CSV export of the lookup history. Up to 1,000,000
 // rows come back at once (Mode DIRECT); more runs as a background job (Mode
 // JOB): poll GetExport until State is READY. One export runs per account at a
 // time. The file holds payer and payee names, so store it with care.
-func (s *SlipsService) CreateExport(ctx context.Context, params *SlipExportParams, opts ...RequestOption) (*SlipExport, error) {
+func (s *SlipExportsService) Create(ctx context.Context, params *SlipExportParams, opts ...RequestOption) (*SlipExport, error) {
 	if params == nil || len(params.Columns) == 0 {
 		return nil, errors.New("checkslip: SlipExportParams.Columns is required")
 	}
@@ -349,8 +355,8 @@ func (s *SlipsService) CreateExport(ctx context.Context, params *SlipExportParam
 	return &out, nil
 }
 
-// GetExport returns the state of a lookup history export.
-func (s *SlipsService) GetExport(ctx context.Context, exportID string, opts ...RequestOption) (*SlipExport, error) {
+// Get returns the state of a lookup history export.
+func (s *SlipExportsService) Get(ctx context.Context, exportID string, opts ...RequestOption) (*SlipExport, error) {
 	if exportID == "" {
 		return nil, errors.New("checkslip: export ID is required")
 	}
@@ -361,11 +367,11 @@ func (s *SlipsService) GetExport(ctx context.Context, exportID string, opts ...R
 	return &out, nil
 }
 
-// DownloadExportPart downloads one CSV part of a READY export. The caller
+// DownloadPart downloads one CSV part of a READY export. The caller
 // must close the returned body. The part's URL must point at the API host
 // the client uses; the client refuses other hosts so the API key stays
 // with Checkslip.
-func (s *SlipsService) DownloadExportPart(ctx context.Context, part ExportPart, opts ...RequestOption) (io.ReadCloser, error) {
+func (s *SlipExportsService) DownloadPart(ctx context.Context, part ExportPart, opts ...RequestOption) (io.ReadCloser, error) {
 	if s.c.baseErr != nil {
 		return nil, s.c.baseErr
 	}
@@ -381,7 +387,7 @@ func (s *SlipsService) DownloadExportPart(ctx context.Context, part ExportPart, 
 	}
 	resp, _, err := s.c.do(ctx, &request{
 		method: http.MethodGet, path: u.Path, absURL: u,
-		accept: "text/csv", idempotent: true, opts: opts,
+		accept: "text/csv", idempotent: true, stream: true, opts: opts,
 	})
 	if err != nil {
 		return nil, err

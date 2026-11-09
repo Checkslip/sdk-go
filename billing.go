@@ -8,8 +8,41 @@ import (
 	"time"
 )
 
-// BillingService reads credits, orders, receipts and billing details.
-type BillingService struct{ c *Client }
+// BillingService reads credits, orders, receipts and the billing details
+// printed on receipts.
+type BillingService struct {
+	c *Client
+	// Balance is the credit left on the account.
+	Balance *BillingBalanceService
+	// Info is the billing details printed on receipts.
+	Info *BillingInfoService
+	// List are the credit packages on sale.
+	Packages *BillingPackagesService
+	// List is every top-up, charge and expiry.
+	Ledger *BillingLedgerService
+	// List are orders for credit packages.
+	Orders *BillingOrdersService
+	// List are receipts for paid orders.
+	Receipts *BillingReceiptsService
+}
+
+// BillingBalanceService reads the credit balance.
+type BillingBalanceService struct{ c *Client }
+
+// BillingInfoService reads and replaces the billing details on receipts.
+type BillingInfoService struct{ c *Client }
+
+// BillingPackagesService lists the credit packages on sale.
+type BillingPackagesService struct{ c *Client }
+
+// BillingLedgerService reads the credit ledger.
+type BillingLedgerService struct{ c *Client }
+
+// BillingOrdersService reads orders and refreshes their payment result.
+type BillingOrdersService struct{ c *Client }
+
+// BillingReceiptsService reads receipts.
+type BillingReceiptsService struct{ c *Client }
 
 // Balance is the account's credit balance.
 type Balance struct {
@@ -27,9 +60,9 @@ type Balance struct {
 	LastEntryID *string    `json:"last_entry_id"`
 }
 
-// Balance returns the remaining credits, their expiry and whether they are
+// Get returns the remaining credits, their expiry and whether they are
 // running low. It needs an API key with credit:read or billing:read.
-func (s *BillingService) Balance(ctx context.Context, opts ...RequestOption) (*Balance, error) {
+func (s *BillingBalanceService) Get(ctx context.Context, opts ...RequestOption) (*Balance, error) {
 	var out Balance
 	if _, err := s.c.doJSON(ctx, getReq("/api/billing/balance", nil, opts), &out); err != nil {
 		return nil, err
@@ -47,8 +80,8 @@ type BillingInfo struct {
 	Email     string    `json:"email,omitempty"`
 }
 
-// Info returns the billing details used on receipts.
-func (s *BillingService) Info(ctx context.Context, opts ...RequestOption) (*BillingInfo, error) {
+// Get returns the billing details used on receipts.
+func (s *BillingInfoService) Get(ctx context.Context, opts ...RequestOption) (*BillingInfo, error) {
 	var out BillingInfo
 	if _, err := s.c.doJSON(ctx, getReq("/api/billing/billing-info", nil, opts), &out); err != nil {
 		return nil, err
@@ -56,10 +89,10 @@ func (s *BillingService) Info(ctx context.Context, opts ...RequestOption) (*Bill
 	return &out, nil
 }
 
-// UpdateInfo saves the buyer details printed on your next receipts. Receipts
+// Update saves the buyer details printed on your next receipts. Receipts
 // already issued keep theirs. The tax ID must be 13 digits. It needs an API
 // key with billing:write.
-func (s *BillingService) UpdateInfo(ctx context.Context, info *BillingInfo, opts ...RequestOption) (*BillingInfo, error) {
+func (s *BillingInfoService) Update(ctx context.Context, info *BillingInfo, opts ...RequestOption) (*BillingInfo, error) {
 	if info == nil {
 		return nil, errors.New("checkslip: billing info is required")
 	}
@@ -107,7 +140,7 @@ type LedgerParams struct {
 // purchases, lookups that used a credit, lookups that did not (with the
 // reason in FreeReason) and credits that expired. One call covers at most 31
 // days.
-func (s *BillingService) Ledger(ctx context.Context, params *LedgerParams, opts ...RequestOption) (*Page[CreditEntry], error) {
+func (s *BillingLedgerService) List(ctx context.Context, params *LedgerParams, opts ...RequestOption) (*Page[CreditEntry], error) {
 	q := query{}
 	if params != nil {
 		q.page(params.ListOptions)
@@ -128,19 +161,19 @@ func (s *BillingService) Ledger(ctx context.Context, params *LedgerParams, opts 
 	return &out, nil
 }
 
-// LedgerAll walks every ledger entry that matches params.
-func (s *BillingService) LedgerAll(ctx context.Context, params *LedgerParams, opts ...RequestOption) *Iter[CreditEntry] {
+// ListAll walks every ledger entry that matches params.
+func (s *BillingLedgerService) ListAll(ctx context.Context, params *LedgerParams, opts ...RequestOption) *Iter[CreditEntry] {
 	p := LedgerParams{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[CreditEntry], error) {
 		p.Cursor = cursor
-		return s.Ledger(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
-// Order is a purchase of credits.
+// Get is a purchase of credits.
 type Order struct {
 	ID            string        `json:"id"`
 	Status        OrderStatus   `json:"status"`
@@ -166,7 +199,7 @@ type OrdersParams struct {
 }
 
 // Orders returns one page of credit orders, newest first.
-func (s *BillingService) Orders(ctx context.Context, params *OrdersParams, opts ...RequestOption) (*Page[Order], error) {
+func (s *BillingOrdersService) List(ctx context.Context, params *OrdersParams, opts ...RequestOption) (*Page[Order], error) {
 	q := query{}
 	if params != nil {
 		q.page(params.ListOptions)
@@ -179,20 +212,20 @@ func (s *BillingService) Orders(ctx context.Context, params *OrdersParams, opts 
 	return &out, nil
 }
 
-// OrdersAll walks every order that matches params.
-func (s *BillingService) OrdersAll(ctx context.Context, params *OrdersParams, opts ...RequestOption) *Iter[Order] {
+// ListAll walks every order that matches params.
+func (s *BillingOrdersService) ListAll(ctx context.Context, params *OrdersParams, opts ...RequestOption) *Iter[Order] {
 	p := OrdersParams{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[Order], error) {
 		p.Cursor = cursor
-		return s.Orders(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
 // Order returns one credit order.
-func (s *BillingService) Order(ctx context.Context, orderID string, opts ...RequestOption) (*Order, error) {
+func (s *BillingOrdersService) Get(ctx context.Context, orderID string, opts ...RequestOption) (*Order, error) {
 	if orderID == "" {
 		return nil, errors.New("checkslip: order ID is required")
 	}
@@ -203,12 +236,12 @@ func (s *BillingService) Order(ctx context.Context, orderID string, opts ...Requ
 	return &out, nil
 }
 
-// SyncOrder asks the payment provider for the payment result of an order now
+// Sync asks the payment provider for the payment result of an order now
 // instead of waiting for its notice, and returns the order. If it is paid,
 // the credits arrive then. If the payment page was closed but the money has
 // not arrived, the order shows Confirming. Asking again within a few seconds
 // returns the same result.
-func (s *BillingService) SyncOrder(ctx context.Context, orderID string, opts ...RequestOption) (*Order, error) {
+func (s *BillingOrdersService) Sync(ctx context.Context, orderID string, opts ...RequestOption) (*Order, error) {
 	if orderID == "" {
 		return nil, errors.New("checkslip: order ID is required")
 	}
@@ -248,7 +281,7 @@ type PackageList struct {
 
 // Packages returns every credit package with its price, credits and
 // validity. One credit covers one transfer lookup.
-func (s *BillingService) Packages(ctx context.Context, opts ...RequestOption) (*PackageList, error) {
+func (s *BillingPackagesService) List(ctx context.Context, opts ...RequestOption) (*PackageList, error) {
 	var out PackageList
 	if _, err := s.c.doJSON(ctx, getReq("/api/billing/packages", nil, opts), &out); err != nil {
 		return nil, err
@@ -256,7 +289,7 @@ func (s *BillingService) Packages(ctx context.Context, opts ...RequestOption) (*
 	return &out, nil
 }
 
-// Receipt is a tax receipt for a paid order.
+// Get is a tax receipt for a paid order.
 type Receipt struct {
 	ID string `json:"id"`
 	// SellerReady reports whether the seller details are complete.
@@ -296,7 +329,7 @@ type ReceiptVAT struct {
 }
 
 // Receipts returns one page of receipts, newest first.
-func (s *BillingService) Receipts(ctx context.Context, params *ListOptions, opts ...RequestOption) (*Page[Receipt], error) {
+func (s *BillingReceiptsService) List(ctx context.Context, params *ListOptions, opts ...RequestOption) (*Page[Receipt], error) {
 	q := query{}
 	if params != nil {
 		q.page(*params)
@@ -308,20 +341,20 @@ func (s *BillingService) Receipts(ctx context.Context, params *ListOptions, opts
 	return &out, nil
 }
 
-// ReceiptsAll walks every receipt.
-func (s *BillingService) ReceiptsAll(ctx context.Context, params *ListOptions, opts ...RequestOption) *Iter[Receipt] {
+// ListAll walks every receipt.
+func (s *BillingReceiptsService) ListAll(ctx context.Context, params *ListOptions, opts ...RequestOption) *Iter[Receipt] {
 	p := ListOptions{}
 	if params != nil {
 		p = *params
 	}
 	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[Receipt], error) {
 		p.Cursor = cursor
-		return s.Receipts(ctx, &p, opts...)
+		return s.List(ctx, &p, opts...)
 	})
 }
 
 // Receipt returns one receipt.
-func (s *BillingService) Receipt(ctx context.Context, receiptID string, opts ...RequestOption) (*Receipt, error) {
+func (s *BillingReceiptsService) Get(ctx context.Context, receiptID string, opts ...RequestOption) (*Receipt, error) {
 	if receiptID == "" {
 		return nil, errors.New("checkslip: receipt ID is required")
 	}

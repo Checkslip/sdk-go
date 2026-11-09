@@ -16,7 +16,12 @@ type WebhooksService struct {
 	Endpoints *WebhookEndpointsService
 	// Deliveries reads and resends sent messages.
 	Deliveries *WebhookDeliveriesService
+	// EventTypes lists the event types Checkslip can send.
+	EventTypes *WebhookEventTypesService
 }
+
+// WebhookEventTypesService lists the event types Checkslip can send.
+type WebhookEventTypesService struct{ c *Client }
 
 // EventTypeInfo describes one webhook event type.
 type EventTypeInfo struct {
@@ -27,8 +32,11 @@ type EventTypeInfo struct {
 	Subscribable bool `json:"subscribable"`
 }
 
-// EventTypes lists the webhook event types.
-func (s *WebhooksService) EventTypes(ctx context.Context, opts ...RequestOption) ([]EventTypeInfo, error) {
+// List returns the webhook event types.
+//
+// The API wraps them in an object with nothing else in it, so the client
+// returns the event types themselves.
+func (s *WebhookEventTypesService) List(ctx context.Context, opts ...RequestOption) ([]EventTypeInfo, error) {
 	var out struct {
 		Items []EventTypeInfo `json:"items"`
 	}
@@ -36,6 +44,28 @@ func (s *WebhooksService) EventTypes(ctx context.Context, opts ...RequestOption)
 		return nil, err
 	}
 	return out.Items, nil
+}
+
+// Verify checks the signature of a message your server received and returns
+// the parsed event. It sends nothing, so it works on a client whose API key is
+// never used. During a secret rotation pass both secrets.
+//
+// NewWebhookVerifier and WebhookVerifier.VerifyRequest do the same without a
+// client, and take an *http.Request directly.
+func (s *WebhooksService) Verify(header http.Header, body []byte, secrets ...string) (*WebhookEvent, error) {
+	v, err := NewWebhookVerifier(secrets...)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.Verify(header, body); err != nil {
+		return nil, err
+	}
+	ev, err := ParseWebhookEvent(body)
+	if err != nil {
+		return nil, err
+	}
+	ev.ID = header.Get("webhook-id")
+	return ev, nil
 }
 
 // WebhookEndpointsService manages webhook endpoints.

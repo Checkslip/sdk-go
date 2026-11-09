@@ -58,7 +58,7 @@ func main() {
 
 หักเครดิตเฉพาะเมื่อผลเป็น `FOUND`
 
-ถ้าจะส่งรูปแทนข้อความ QR ให้ใช้ `LookupImage` รับไฟล์ JPEG, PNG และ WebP ขนาดไม่เกิน 10 MB และ Checkslip ไม่เก็บรูปไว้
+ถ้าจะส่งรูปแทนข้อความ QR ให้ตั้งค่า `Image` ใน `LookupParams` แทน `QR` รับไฟล์ JPEG, PNG และ WebP ขนาดไม่เกิน 10 MB และ Checkslip ไม่เก็บรูปไว้ ถ้าใส่มาทั้งคู่หรือไม่ใส่เลย ไคลเอนต์จะแจ้ง error ก่อนส่งคำขอ
 
 ```go
 f, err := os.Open("slip.jpg")
@@ -67,7 +67,7 @@ if err != nil {
 }
 defer f.Close()
 
-res, err := client.Slips.LookupImage(ctx, &checkslip.LookupImageParams{Image: f})
+res, err := client.Slips.Lookup(ctx, &checkslip.LookupParams{Image: f})
 ```
 
 ผล `PENDING` จะได้คำตอบทีหลัง อ่านผลด้วย `client.Slips.Get(ctx, res.RequestID)` หลังเวลาใน `res.RetryAfter` หรือรอ webhook `slip.checked`
@@ -76,12 +76,14 @@ res, err := client.Slips.LookupImage(ctx, &checkslip.LookupImageParams{Image: f}
 
 | Service | Method |
 | --- | --- |
-| `client.Slips` | `Lookup`, `LookupImage`, `Get`, `List`, `ListAll`, `Counts`, `CreateExport`, `GetExport`, `DownloadExportPart` |
-| `client.Billing` | `Balance`, `Info`, `UpdateInfo`, `Ledger`, `Orders`, `Order`, `SyncOrder`, `Packages`, `Receipts`, `Receipt` |
-| `client.Usage` | `Get` |
+| `client.Slips` | `Lookup`, `Get`, `List`, `ListAll`, `Counts` และ `Exports` (`Create`, `Get`, `DownloadPart`) |
 | `client.Banks` | `List` |
-| `client.Webhooks` | `EventTypes` และ `Endpoints` (`List`, `Create`, `Get`, `Update`, `Delete`, `Recover`, `RotateSecret`, `SendTest`) กับ `Deliveries` (`List`, `Get`, `Redeliver`) |
-| `client.Audit` | `ListEvents`, `GetEvent`, `ListRequests`, `GetRequest`, `CreateExport`, `ListExports`, `GetExport`, `DownloadExport`, `SigningKeys` |
+| `client.Billing` | `Balance.Get`, `Info` (`Get`, `Update`), `Packages.List`, `Ledger` (`List`, `ListAll`), `Orders` (`List`, `ListAll`, `Get`, `Sync`), `Receipts` (`List`, `ListAll`, `Get`) |
+| `client.Usage` | `Get` |
+| `client.Audit` | `Events` (`List`, `ListAll`, `Get`), `Requests` (`List`, `ListAll`, `Get`), `Checkpoints` (`List`, `ListAll`, `ListLatest`), `Chain.Check`, `Exports` (`List`, `ListAll`, `Create`, `Get`, `Download`), `SigningKeys.Get` |
+| `client.Webhooks` | `Verify`, `EventTypes.List`, `Endpoints` (`List`, `ListAll`, `Create`, `Get`, `Update`, `Delete`, `Recover`, `RotateSecret`, `SendTest`), `Deliveries` (`List`, `ListAll`, `Get`, `Redeliver`) |
+
+ชื่อชุดเดียวกันและโครงเดียวกันนี้อยู่ในไคลเอนต์ JavaScript, PHP และ Rust ด้วย
 
 ทุก method รับ `context.Context` เป็นพารามิเตอร์แรก ใช้กำหนดเวลาหมดและยกเลิกคำขอ
 
@@ -128,7 +130,7 @@ if err != nil {
 
 ## Idempotency
 
-`Slips.Lookup` และ `Slips.LookupImage` ส่ง `Idempotency-Key` ทุกครั้ง คำขอที่ API บังคับให้มี key ก็เช่นกัน ได้แก่ สร้างไฟล์หลักฐาน, recover, เปลี่ยน secret, ส่งข้อความทดสอบ และส่ง webhook ซ้ำ ถ้าคุณไม่ได้ส่ง key มา client จะสุ่มให้และใช้ key เดิมเมื่อส่งซ้ำเอง การค้นหาที่ส่งซ้ำด้วย key เดิมจะได้คำตอบแรกกลับมาและไม่หักเครดิตซ้ำ
+`Slips.Lookup` ส่ง `Idempotency-Key` ทุกครั้ง คำขอที่ API บังคับให้มี key ก็เช่นกัน ได้แก่ สร้างไฟล์หลักฐาน, recover, เปลี่ยน secret, ส่งข้อความทดสอบ และส่ง webhook ซ้ำ ถ้าคุณไม่ได้ส่ง key มา client จะสุ่มให้และใช้ key เดิมเมื่อส่งซ้ำเอง การค้นหาที่ส่งซ้ำด้วย key เดิมจะได้คำตอบแรกกลับมาและไม่หักเครดิตซ้ำ
 
 ถ้าโปรแกรมของคุณอาจส่งคำขอเดิมอีกหลังรีสตาร์ต ให้กำหนด key เอง เช่นสร้างจากเลขคำสั่งซื้อ
 

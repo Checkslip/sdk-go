@@ -58,7 +58,7 @@ func main() {
 
 Only a `FOUND` lookup uses a credit.
 
-To send an image instead of the QR text, use `LookupImage`. JPEG, PNG and WebP up to 10 MB are accepted, and Checkslip does not store the image.
+To send an image instead of the QR text, set `Image` on `LookupParams` instead of `QR`. JPEG, PNG and WebP up to 10 MB are accepted, and Checkslip does not store the image. Setting both, or neither, is an error the client reports before it sends anything.
 
 ```go
 f, err := os.Open("slip.jpg")
@@ -67,7 +67,7 @@ if err != nil {
 }
 defer f.Close()
 
-res, err := client.Slips.LookupImage(ctx, &checkslip.LookupImageParams{Image: f})
+res, err := client.Slips.Lookup(ctx, &checkslip.LookupParams{Image: f})
 ```
 
 A `PENDING` lookup is settled later. Read it with `client.Slips.Get(ctx, res.RequestID)` after `res.RetryAfter`, or wait for the `slip.checked` webhook.
@@ -76,12 +76,14 @@ A `PENDING` lookup is settled later. Read it with `client.Slips.Get(ctx, res.Req
 
 | Service | Methods |
 | --- | --- |
-| `client.Slips` | `Lookup`, `LookupImage`, `Get`, `List`, `ListAll`, `Counts`, `CreateExport`, `GetExport`, `DownloadExportPart` |
-| `client.Billing` | `Balance`, `Info`, `UpdateInfo`, `Ledger`, `Orders`, `Order`, `SyncOrder`, `Packages`, `Receipts`, `Receipt` |
-| `client.Usage` | `Get` |
+| `client.Slips` | `Lookup`, `Get`, `List`, `ListAll`, `Counts`, and `Exports` (`Create`, `Get`, `DownloadPart`) |
 | `client.Banks` | `List` |
-| `client.Webhooks` | `EventTypes`, plus `Endpoints` (`List`, `Create`, `Get`, `Update`, `Delete`, `Recover`, `RotateSecret`, `SendTest`) and `Deliveries` (`List`, `Get`, `Redeliver`) |
-| `client.Audit` | `ListEvents`, `GetEvent`, `ListRequests`, `GetRequest`, `CreateExport`, `ListExports`, `GetExport`, `DownloadExport`, `SigningKeys` |
+| `client.Billing` | `Balance.Get`, `Info` (`Get`, `Update`), `Packages.List`, `Ledger` (`List`, `ListAll`), `Orders` (`List`, `ListAll`, `Get`, `Sync`), `Receipts` (`List`, `ListAll`, `Get`) |
+| `client.Usage` | `Get` |
+| `client.Audit` | `Events` (`List`, `ListAll`, `Get`), `Requests` (`List`, `ListAll`, `Get`), `Checkpoints` (`List`, `ListAll`, `ListLatest`), `Chain.Check`, `Exports` (`List`, `ListAll`, `Create`, `Get`, `Download`), `SigningKeys.Get` |
+| `client.Webhooks` | `Verify`, `EventTypes.List`, `Endpoints` (`List`, `ListAll`, `Create`, `Get`, `Update`, `Delete`, `Recover`, `RotateSecret`, `SendTest`), `Deliveries` (`List`, `ListAll`, `Get`, `Redeliver`) |
+
+The same names, in the same shape, are in the JavaScript, PHP and Rust clients.
 
 Every method takes a `context.Context` first. Use it for deadlines and cancellation.
 
@@ -128,7 +130,7 @@ The client does not wait out a `Retry-After` longer than 60 seconds or longer th
 
 ## Idempotency
 
-`Slips.Lookup` and `Slips.LookupImage` always send an `Idempotency-Key`. So do the calls the API requires one for: creating an evidence file, recovering, rotating a secret, sending a test and redelivering webhooks. When you do not pass a key, the client makes a random one and reuses it on its own retries. A lookup sent again with the same key returns the first answer and is never charged twice.
+`Slips.Lookup` always sends an `Idempotency-Key`. So do the calls the API requires one for: creating an evidence file, recovering, rotating a secret, sending a test and redelivering webhooks. When you do not pass a key, the client makes a random one and reuses it on its own retries. A lookup sent again with the same key returns the first answer and is never charged twice.
 
 Pass your own key when your program may resend the same request after a restart, for example a key built from your order number:
 

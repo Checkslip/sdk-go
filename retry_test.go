@@ -20,19 +20,19 @@ func TestRetryPolicy(t *testing.T) {
 	}{
 		{
 			name:      "GET 503 retried",
-			call:      func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err },
+			call:      func(c *Client) error { _, err := c.Billing.Balance.Get(context.Background()); return err },
 			status:    503,
 			wantCalls: 3,
 		},
 		{
 			name:      "GET 500 retried",
-			call:      func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err },
+			call:      func(c *Client) error { _, err := c.Billing.Balance.Get(context.Background()); return err },
 			status:    500,
 			wantCalls: 3,
 		},
 		{
 			name:      "GET 404 not retried",
-			call:      func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err },
+			call:      func(c *Client) error { _, err := c.Billing.Balance.Get(context.Background()); return err },
 			status:    404,
 			wantCalls: 1,
 		},
@@ -96,7 +96,7 @@ func TestRetryPolicy(t *testing.T) {
 		},
 		{
 			name:      "Retry-After over limit returned at once",
-			call:      func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err },
+			call:      func(c *Client) error { _, err := c.Billing.Balance.Get(context.Background()); return err },
 			status:    429,
 			headers:   []string{"Retry-After", "3600"},
 			wantCalls: 1,
@@ -132,7 +132,7 @@ func TestRetryHonorsRetryAfter(t *testing.T) {
 		}
 		writeJSON(w, 200, `{"credits":3}`)
 	})
-	b, err := c.Billing.Balance(context.Background())
+	b, err := c.Billing.Balance.Get(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestNetworkErrorRetry(t *testing.T) {
 		call      func(c *Client) error
 		wantCalls int32
 	}{
-		{"GET retried", func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err }, 3},
+		{"GET retried", func(c *Client) error { _, err := c.Billing.Balance.Get(context.Background()); return err }, 3},
 		{"lookup retried", func(c *Client) error {
 			_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "q"})
 			return err
@@ -215,7 +215,7 @@ func TestMaxRetriesZero(t *testing.T) {
 		calls.Add(1)
 		writeProblem(w, 503, "INTERNAL")
 	}, WithMaxRetries(0))
-	_, _ = c.Billing.Balance(context.Background())
+	_, _ = c.Billing.Balance.Get(context.Background())
 	if calls.Load() != 1 {
 		t.Fatalf("calls = %d, want 1", calls.Load())
 	}
@@ -229,7 +229,7 @@ func TestRetryStopsBeforeContextDeadline(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := c.Billing.Balance(ctx)
+	_, err := c.Billing.Balance.Get(ctx)
 	if !IsRateLimited(err) {
 		t.Fatalf("got %v, want rate limited error", err)
 	}
