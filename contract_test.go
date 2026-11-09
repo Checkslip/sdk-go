@@ -281,3 +281,43 @@ func TestLookupNeedsExactlyOneInput(t *testing.T) {
 		t.Error("both QR and Image should be rejected")
 	}
 }
+
+// TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields covers both shapes:
+// the API added free_other, stopped counting free_no_credit and
+// free_hold_expired, and will drop those two fields. The client and the API
+// are deployed separately, so either shape has to decode.
+func TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields(t *testing.T) {
+	const before = `{"checks":12,"charged":7,"free_not_found":1,"free_duplicate":0,"free_unavailable":0,` +
+		`"free_invalid_qr":0,"free_invalid_file":0,"free_qr_tampered":0,"free_too_old":0,` +
+		`"free_no_credit":3,"free_hold_expired":2,"free_system_error":0}`
+	const after = `{"start":"2026-11-01","checks":12,"charged":7,"free_not_found":1,"free_duplicate":0,` +
+		`"free_unavailable":0,"free_invalid_qr":0,"free_invalid_file":0,"free_qr_tampered":0,` +
+		`"free_too_old":0,"free_system_error":0,"free_other":5}`
+
+	var old UsageCounts
+	if err := json.Unmarshal([]byte(before), &old); err != nil {
+		t.Fatalf("the shape with the deprecated fields must decode: %v", err)
+	}
+	if old.FreeNoCredit != 3 || old.FreeHoldExpired != 2 {
+		t.Errorf("deprecated counts lost: %+v", old)
+	}
+	if old.FreeOther != 0 {
+		t.Errorf("FreeOther = %d, want 0 against a server that does not send it", old.FreeOther)
+	}
+
+	// A bucket embeds UsageCounts, so the absent fields are tested there too.
+	var bucket UsageBucket
+	if err := json.Unmarshal([]byte(after), &bucket); err != nil {
+		t.Fatalf("the shape without the deprecated fields must decode: %v", err)
+	}
+	if bucket.FreeOther != 5 {
+		t.Errorf("FreeOther = %d, want 5", bucket.FreeOther)
+	}
+	if bucket.FreeNoCredit != 0 || bucket.FreeHoldExpired != 0 {
+		t.Errorf("absent fields must read as 0: %+v", bucket)
+	}
+
+	if FreeReasonOther != "OTHER" {
+		t.Errorf("FreeReasonOther = %q, want OTHER", FreeReasonOther)
+	}
+}
