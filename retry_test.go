@@ -56,22 +56,31 @@ func TestRetryPolicy(t *testing.T) {
 			wantCalls: 3,
 		},
 		{
-			name:      "lookup 503 retried (auto key)",
-			call:      func(c *Client) error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"}); return err },
+			name: "lookup 503 retried (auto key)",
+			call: func(c *Client) error {
+				_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"})
+				return err
+			},
 			status:    503,
 			code:      "UNAVAILABLE",
 			wantCalls: 3,
 		},
 		{
-			name:      "lookup 409 in flight retried",
-			call:      func(c *Client) error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"}); return err },
+			name: "lookup 409 in flight retried",
+			call: func(c *Client) error {
+				_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"})
+				return err
+			},
 			status:    409,
 			code:      "IDEMPOTENCY_IN_FLIGHT",
 			wantCalls: 3,
 		},
 		{
-			name:      "lookup 422 not retried",
-			call:      func(c *Client) error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"}); return err },
+			name: "lookup 422 not retried",
+			call: func(c *Client) error {
+				_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "qr"})
+				return err
+			},
 			status:    422,
 			code:      "INVALID_QR",
 			wantCalls: 1,
@@ -164,7 +173,10 @@ func TestNetworkErrorRetry(t *testing.T) {
 		wantCalls int32
 	}{
 		{"GET retried", func(c *Client) error { _, err := c.Billing.Balance(context.Background()); return err }, 3},
-		{"lookup retried", func(c *Client) error { _, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "q"}); return err }, 3},
+		{"lookup retried", func(c *Client) error {
+			_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: "q"})
+			return err
+		}, 3},
 		{"create endpoint not retried", func(c *Client) error {
 			_, err := c.Webhooks.Endpoints.Create(context.Background(), &CreateEndpointParams{URL: "https://x.test", EventTypes: []EventType{EventSlipChecked}})
 			return err
