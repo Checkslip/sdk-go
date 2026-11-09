@@ -218,9 +218,8 @@ func TestWebhookEndpointsAndDeliveries(t *testing.T) {
 	}
 }
 
-// hiddenFields left the customer API. The public openapi.json is the arbiter
-// of what a customer sees (checkslip/pm, 9 Nov 2026), so this is what the
-// contract dropped. latency_ms, upstream_ms and checked_elsewhere are still in
+// hiddenFields left the Checkslip API. The published OpenAPI document is the arbiter
+// of what the SDK exposes, so this is what it dropped. latency_ms, upstream_ms and checked_elsewhere are still in
 // the contract and the SDK carries them, so they are deliberately absent here.
 var hiddenFields = []string{
 	"recorded_by", "chain", "trace_id", "build", "source_domain",

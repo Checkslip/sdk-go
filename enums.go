@@ -264,8 +264,8 @@ const (
 // ExportColumn is one column of a lookup history CSV.
 //
 // latency_ms, upstream_ms and checked_elsewhere are deliberately absent:
-// verify 0.61.0 takes them out of the contract and they are not offered here
-// while that lands (checkslip/pm h-mw94dkac8a0, 9 Nov 2026).
+// they are being withdrawn from the Checkslip API, so they are not offered
+// as export columns.
 type ExportColumn string
 
 // Export columns.

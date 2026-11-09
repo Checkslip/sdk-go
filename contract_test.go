@@ -13,7 +13,7 @@ import (
 
 const contractTestQR = "00330006000001010306902126302105340875102TH9104F86F"
 
-// These tests guard the cross-language SDK contract in docs/sdk-naming.md.
+// These tests guard the surface the four Checkslip SDKs share.
 // They exist so the four SDKs cannot drift apart again.
 
 // canonicalNames is every resource.method from the table, spelled the Go way:
@@ -164,11 +164,9 @@ func TestUnmodelledFieldsTolerated(t *testing.T) {
 	}
 }
 
-// TestVerifyFieldsStayOut: verify 0.61.0 takes latency_ms, upstream_ms and
-// checked_elsewhere out of the contract. That has not deployed yet, so pm asked
-// for them to stay out of the SDK until the regenerated spec arrives
-// (h-mw94dkac8a0, 9 Nov 2026). Delete this test with the deny-list.
-func TestVerifyFieldsStayOut(t *testing.T) {
+// Fields being withdrawn from the Checkslip API must not appear on the
+// models, so a caller never builds on something that is about to disappear.
+func TestWithdrawnFieldsStayOut(t *testing.T) {
 	for _, rt := range []reflect.Type{reflect.TypeOf(SlipCheck{}), reflect.TypeOf(SlipCheckRecord{})} {
 		for _, name := range []string{"LatencyMs", "UpstreamMs", "CheckedElsewhere"} {
 			if _, ok := rt.FieldByName(name); ok {

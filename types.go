@@ -153,11 +153,9 @@ type SlipCheck struct {
 	// Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING.
 	Outcome   Outcome   `json:"outcome"`
 	CheckedAt time.Time `json:"checked_at"`
-	// TEMPORARY, remove when verify 0.61.0 is live (checkslip/pm h-mw94dkac8a0,
-	// 9 Nov 2026): verify took latency_ms, upstream_ms and checked_elsewhere out
-	// of the contract, but that has not reached main or deploy yet, so the
-	// public openapi.json still lists them. They stay out of the SDK until pm
-	// sends the regenerated spec, then this note goes away.
+	// latency_ms, upstream_ms and checked_elsewhere are being withdrawn from
+	// the Checkslip API. The SDK does not carry them, so your code will not
+	// break when the API stops sending them.
 	// Slip is the transfer data. It may be a summary; see Slip.
 	Slip *Slip `json:"slip"`
 	// DuplicateOf is set when Outcome is DUPLICATE.
@@ -183,11 +181,9 @@ type SlipCheckRecord struct {
 	APIKeyID *string `json:"api_key_id,omitempty"`
 	// Status is the HTTP status the lookup was answered with.
 	Status int `json:"status,omitempty"`
-	// TEMPORARY, remove when verify 0.61.0 is live (checkslip/pm h-mw94dkac8a0,
-	// 9 Nov 2026): verify took latency_ms, upstream_ms and checked_elsewhere out
-	// of the contract, but that has not reached main or deploy yet, so the
-	// public openapi.json still lists them. They stay out of the SDK until pm
-	// sends the regenerated spec, then this note goes away.
+	// latency_ms, upstream_ms and checked_elsewhere are being withdrawn from
+	// the Checkslip API. The SDK does not carry them, so your code will not
+	// break when the API stops sending them.
 	Channel         Channel      `json:"channel"`
 	Slip            *Slip        `json:"slip,omitempty"`
 	DuplicateOf     *DuplicateOf `json:"duplicate_of,omitempty"`
