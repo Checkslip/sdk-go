@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -161,6 +162,41 @@ func TestUnmodelledFieldsTolerated(t *testing.T) {
 	if err := json.Unmarshal([]byte(withoutCE), &d); err != nil {
 		t.Fatalf("webhook payload without checked_elsewhere must decode: %v", err)
 	}
+}
+
+// TestVerifyFieldsStayOut: verify 0.61.0 takes latency_ms, upstream_ms and
+// checked_elsewhere out of the contract. That has not deployed yet, so pm asked
+// for them to stay out of the SDK until the regenerated spec arrives
+// (h-mw94dkac8a0, 9 Nov 2026). Delete this test with the deny-list.
+func TestVerifyFieldsStayOut(t *testing.T) {
+	for _, rt := range []reflect.Type{reflect.TypeOf(SlipCheck{}), reflect.TypeOf(SlipCheckRecord{})} {
+		for _, name := range []string{"LatencyMs", "UpstreamMs", "CheckedElsewhere"} {
+			if _, ok := rt.FieldByName(name); ok {
+				t.Errorf("%s still exposes %s", rt.Name(), name)
+			}
+		}
+	}
+	for _, c := range []ExportColumn{"latency_ms", "upstream_ms", "checked_elsewhere"} {
+		if strings.Contains(exportColumnSource(t), string(c)) {
+			t.Errorf("ExportColumn still offers %s", c)
+		}
+	}
+}
+
+// exportColumnSource reads enums.go so the check covers the declared constants
+// rather than a hand-kept list.
+func exportColumnSource(t *testing.T) string {
+	t.Helper()
+	src, err := os.ReadFile("enums.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := strings.Index(string(src), "// Export columns.")
+	if i < 0 {
+		t.Fatal("could not find the export column block")
+	}
+	j := strings.Index(string(src)[i:], "\n)")
+	return string(src)[i : i+j]
 }
 
 // TestContractFieldsArePresent: latency_ms is required on ApiRequestRecord in
