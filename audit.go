@@ -160,11 +160,14 @@ func (s *AuditEventsService) Get(ctx context.Context, eventID string, opts ...Re
 // API returns the last 24 hours; one call covers at most 31 days.
 type ListRequestsParams struct {
 	ListOptions
-	From, To    time.Time
-	HTTPStatus  int
-	OutcomeCode string
-	Route       string
-	Channel     Channel
+	From, To time.Time
+	// HTTPStatus, OutcomeCode, Route and Channel each take several values,
+	// and a record matches when it matches any one of them. The API allows
+	// at most 20 statuses, codes or routes, and at most 5 channels.
+	HTTPStatus  []int
+	OutcomeCode []string
+	Route       []string
+	Channel     []Channel
 	APIKeyID    string
 	// TransRef or QRSHA256 find whether a slip was sent before.
 	TransRef string
@@ -179,10 +182,10 @@ func (s *AuditRequestsService) List(ctx context.Context, params *ListRequestsPar
 		q.page(params.ListOptions)
 		q.time("from", params.From)
 		q.time("to", params.To)
-		q.int("http_status", params.HTTPStatus)
-		q.str("outcome_code", params.OutcomeCode)
-		q.str("route", params.Route)
-		q.str("channel", string(params.Channel))
+		multiInt(q, "http_status", params.HTTPStatus)
+		multi(q, "outcome_code", params.OutcomeCode)
+		multi(q, "route", params.Route)
+		multi(q, "channel", params.Channel)
 		q.str("api_key_id", params.APIKeyID)
 		q.str("trans_ref", params.TransRef)
 		q.str("qr_sha256", params.QRSHA256)

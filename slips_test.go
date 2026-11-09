@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -350,5 +352,36 @@ func TestExports(t *testing.T) {
 	_, err = c.Slips.Exports.DownloadPart(context.Background(), ExportPart{Part: 2, URL: "https://evil.example/api/slips/exports/e1/parts/2?sig=x"})
 	if err == nil || !strings.Contains(err.Error(), "not on the API host") {
 		t.Fatalf("other host: got %v", err)
+	}
+}
+
+// TestAuditRequestFiltersRepeatKeys covers the audit request filters that take
+// several values. The spec declares them style=form with explode=true, so each
+// value gets its own key rather than being joined.
+func TestAuditRequestFiltersRepeatKeys(t *testing.T) {
+	var q url.Values
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		q = r.URL.Query()
+		writeJSON(w, 200, `{"items":[],"next_cursor":null}`)
+	})
+	if _, err := c.Audit.Requests.List(context.Background(), &ListRequestsParams{
+		HTTPStatus:  []int{200, 429},
+		OutcomeCode: []string{"FOUND", "NOT_FOUND"},
+		Route:       []string{"/api/slips/lookup", "/api/usage"},
+		Channel:     []Channel{ChannelAPI, ChannelDashboard},
+		APIKeyID:    "ak_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string][]string{
+		"http_status":  {"200", "429"},
+		"outcome_code": {"FOUND", "NOT_FOUND"},
+		"route":        {"/api/slips/lookup", "/api/usage"},
+		"channel":      {"API", "DASHBOARD"},
+		"api_key_id":   {"ak_1"},
+	} {
+		if got := q[key]; !slices.Equal(got, want) {
+			t.Errorf("%s = %v, want %v", key, got, want)
+		}
 	}
 }
