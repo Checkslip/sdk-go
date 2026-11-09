@@ -164,8 +164,8 @@ func TestUnmodelledFieldsTolerated(t *testing.T) {
 	}
 }
 
-// Fields being withdrawn from the Checkslip API must not appear on the
-// models, so a caller never builds on something that is about to disappear.
+// Fields that left the Checkslip API must not appear on the models, so a
+// caller never builds on something the API no longer sends.
 func TestWithdrawnFieldsStayOut(t *testing.T) {
 	for _, rt := range []reflect.Type{reflect.TypeOf(SlipCheck{}), reflect.TypeOf(SlipCheckRecord{})} {
 		for _, name := range []string{"LatencyMs", "UpstreamMs", "CheckedElsewhere"} {
