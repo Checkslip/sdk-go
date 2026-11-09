@@ -1,6 +1,6 @@
 # Checkslip Go SDK
 
-[ภาษาไทย](README.th.md) · [API docs](https://checkslip.com/docs) · [API reference](https://checkslip.com/docs/reference) · [Go reference](https://pkg.go.dev/github.com/Checkslip/checkslip-go)
+[ภาษาไทย](README.th.md) · [API docs](https://checkslip.com/docs) · [API reference](https://checkslip.com/docs/reference) · [Go reference](https://pkg.go.dev/github.com/Checkslip/sdk-go)
 
 The official Go client for the [Checkslip](https://checkslip.com) API.
 
@@ -11,7 +11,7 @@ The SDK needs Go 1.22 or later and has no dependencies outside the standard libr
 ## Install
 
 ```sh
-go get github.com/Checkslip/checkslip-go
+go get github.com/Checkslip/sdk-go
 ```
 
 ## Quick start
@@ -27,7 +27,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Checkslip/checkslip-go"
+	"github.com/Checkslip/sdk-go"
 )
 
 func main() {

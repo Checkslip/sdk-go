@@ -1,6 +1,6 @@
 # Checkslip Go SDK
 
-[English](README.md) · [เอกสาร API](https://checkslip.com/docs) · [API reference](https://checkslip.com/docs/reference) · [Go reference](https://pkg.go.dev/github.com/Checkslip/checkslip-go)
+[English](README.md) · [เอกสาร API](https://checkslip.com/docs) · [API reference](https://checkslip.com/docs/reference) · [Go reference](https://pkg.go.dev/github.com/Checkslip/sdk-go)
 
 ไลบรารี Go อย่างเป็นทางการสำหรับ API ของ [Checkslip](https://checkslip.com)
 
@@ -11,7 +11,7 @@ Checkslip ค้นหารายการโอนเงินของธน�
 ## ติดตั้ง
 
 ```sh
-go get github.com/Checkslip/checkslip-go
+go get github.com/Checkslip/sdk-go
 ```
 
 ## เริ่มใช้งาน
@@ -27,7 +27,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Checkslip/checkslip-go"
+	"github.com/Checkslip/sdk-go"
 )
 
 func main() {

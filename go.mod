@@ -1,3 +1,3 @@
-module github.com/Checkslip/checkslip-go
+module github.com/Checkslip/sdk-go
 
 go 1.22

@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Checkslip/checkslip-go"
+	"github.com/Checkslip/sdk-go"
 )
 
 // fakeAPI stands in for api.checkslip.com so the examples run offline.

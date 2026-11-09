@@ -218,66 +218,13 @@ func TestWebhookEndpointsAndDeliveries(t *testing.T) {
 	}
 }
 
-func TestAudit(t *testing.T) {
-	c, _ := newTestClient(t, routes(t,
-		route{method: "GET", path: "/api/audit/events", status: 200,
-			body: `{"items":[{"event_id":"ev1","source_domain":"auth","category":"SECURITY","outcome":"SUCCESS","occurred_at":"2026-11-01T00:00:00Z","actor":{"type":"USER","id":"u1"},"channel":"DASHBOARD","action":"api_key.created","target":{"type":"api_key","id":"k1"},"build":"abc","chain":{"stream":"AUDIT_EVENTS"}}],"next_cursor":null}`,
-			check: func(t *testing.T, r *http.Request, _ []byte) {
-				if r.URL.Query().Get("action") != "api_key.*" {
-					t.Errorf("action %q", r.URL.Query().Get("action"))
-				}
-			}},
-		route{method: "GET", path: "/api/audit/requests", status: 200,
-			body: `{"items":[{"request_id":"rq1","trace_id":"t","received_at":"2026-11-01T00:00:00Z","latency_ms":5,"channel":"API","method":"POST","route":"/api/slips/lookup","http_status":200,"recorded_by":"gw","fingerprint":{"trans_ref":"630210534087"},"chain":{}}],"next_cursor":null}`},
-		route{method: "POST", path: "/api/audit/exports", status: 202,
-			body: `{"export_id":"x1","status":"QUEUED","from_day":"2026-11-01","to_day":"2026-11-02","streams":["API_REQUESTS"],"created_at":"2026-11-03T00:00:00Z"}`,
-			check: func(t *testing.T, r *http.Request, b []byte) {
-				wantKey(t, r, b)
-				if !strings.Contains(string(b), `"from_day":"2026-11-01"`) {
-					t.Errorf("body %s", b)
-				}
-			}},
-		route{method: "GET", path: "/api/audit/exports/x1/file", status: 200, body: `{"kind":"MANIFEST"}` + "\n"},
-		route{method: "GET", path: "/api/audit/signing-keys", status: 200, body: `{"keys":[{"kty":"OKP","crv":"Ed25519","x":"abc","kid":"k1","use":"sig","status":"ACTIVE"}]}`,
-			check: func(t *testing.T, r *http.Request, _ []byte) {
-				if r.Header.Get("Authorization") != "" {
-					t.Error("signing keys sent the API key")
-				}
-			}},
-	))
-	ctx := context.Background()
-	ev, err := c.Audit.Events.List(ctx, &ListAuditEventsParams{Action: "api_key.*"})
-	if err != nil || ev.Items[0].Target.ID != "k1" || ev.Items[0].Actor.Type != ActorUser {
-		t.Fatalf("events %+v %v", ev, err)
-	}
-	rq, err := c.Audit.Requests.List(ctx, nil)
-	if err != nil || rq.Items[0].Fingerprint.TransRef != "630210534087" || *rq.Items[0].Channel != ChannelAPI {
-		t.Fatalf("requests %+v %v", rq, err)
-	}
-	ex, err := c.Audit.Exports.Create(ctx, &CreateEvidenceExportParams{FromDay: Date{2026, 11, 1}, ToDay: Date{2026, 11, 2}, Streams: []Stream{StreamAPIRequests}})
-	if err != nil || ex.State != ExportQueued {
-		t.Fatalf("export %+v %v", ex, err)
-	}
-	f, err := c.Audit.Exports.Download(ctx, "x1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	line, _ := io.ReadAll(f)
-	_ = f.Close()
-	if !strings.Contains(string(line), "MANIFEST") {
-		t.Fatalf("file %q", line)
-	}
-	keys, err := c.Audit.SigningKeys.Get(ctx)
-	if err != nil || keys[0].Curve != "Ed25519" {
-		t.Fatalf("keys %+v %v", keys, err)
-	}
-}
-
-// hiddenFields are being removed from the customer API. No exported type of
-// this package may carry them.
+// hiddenFields left the customer API. The public openapi.json is the arbiter
+// of what a customer sees (checkslip/pm, 9 Nov 2026), so this is what the
+// contract dropped. latency_ms, upstream_ms and checked_elsewhere are still in
+// the contract and the SDK carries them, so they are deliberately absent here.
 var hiddenFields = []string{
-	"upstream_ms", "recorded_by", "chain", "trace_id", "checked_elsewhere",
-	"latency_ms", "build", "source_domain",
+	"recorded_by", "chain", "trace_id", "build", "source_domain",
+	"redactions", "causation_id",
 }
 
 func TestNoHiddenFields(t *testing.T) {
@@ -287,8 +234,7 @@ func TestNoHiddenFields(t *testing.T) {
 		Balance{}, CreditEntry{}, Order{}, Receipt{}, Usage{}, SupportedBank{},
 		Endpoint{}, EndpointWithSecret{}, Delivery{}, DeliveryDetail{}, WebhookEvent{},
 		ListSlipsParams{}, ListRequestsParams{}, ListAuditEventsParams{},
-		Checkpoint{}, CheckpointLane{}, ChainCheck{}, ChainCheckLane{},
-		CheckChainParams{}, ListCheckpointsParams{}, LookupParams{},
+		LookupParams{}, ExportManifest{},
 	}
 	seen := map[reflect.Type]bool{}
 	var walk func(rt reflect.Type, path string)

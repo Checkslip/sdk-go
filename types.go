@@ -153,6 +153,13 @@ type SlipCheck struct {
 	// Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING.
 	Outcome   Outcome   `json:"outcome"`
 	CheckedAt time.Time `json:"checked_at"`
+	// LatencyMs is how long the lookup took end to end.
+	LatencyMs int `json:"latency_ms,omitempty"`
+	// UpstreamMs is how long the bank took, when that is known.
+	UpstreamMs *int `json:"upstream_ms,omitempty"`
+	// CheckedElsewhere reports whether another account has looked this
+	// transfer up before.
+	CheckedElsewhere *bool `json:"checked_elsewhere,omitempty"`
 	// Slip is the transfer data. It may be a summary; see Slip.
 	Slip *Slip `json:"slip"`
 	// DuplicateOf is set when Outcome is DUPLICATE.
@@ -177,11 +184,18 @@ type SlipCheckRecord struct {
 	// the web app.
 	APIKeyID *string `json:"api_key_id,omitempty"`
 	// Status is the HTTP status the lookup was answered with.
-	Status          int          `json:"status,omitempty"`
-	Channel         Channel      `json:"channel"`
-	Slip            *Slip        `json:"slip,omitempty"`
-	DuplicateOf     *DuplicateOf `json:"duplicate_of,omitempty"`
-	ClientReference *string      `json:"client_reference,omitempty"`
+	Status int `json:"status,omitempty"`
+	// LatencyMs is how long the lookup took end to end.
+	LatencyMs int `json:"latency_ms,omitempty"`
+	// UpstreamMs is how long the bank took, when that is known.
+	UpstreamMs *int `json:"upstream_ms,omitempty"`
+	// CheckedElsewhere reports whether another account has looked this
+	// transfer up before.
+	CheckedElsewhere *bool        `json:"checked_elsewhere,omitempty"`
+	Channel          Channel      `json:"channel"`
+	Slip             *Slip        `json:"slip,omitempty"`
+	DuplicateOf      *DuplicateOf `json:"duplicate_of,omitempty"`
+	ClientReference  *string      `json:"client_reference,omitempty"`
 	// Charged is true when the lookup used a credit, false when it did
 	// not, and nil while that is not settled yet.
 	Charged *bool `json:"charged,omitempty"`

@@ -18,14 +18,8 @@ type AuditService struct {
 	Events *AuditEventsService
 	// Requests is the log of requests this account sent.
 	Requests *AuditRequestsService
-	// Checkpoints are the signed daily seals of the audit hash chain.
-	Checkpoints *AuditCheckpointsService
-	// Chain recomputes one day of the audit hash chain.
-	Chain *AuditChainService
 	// Exports builds evidence files for an auditor, a bank or a court.
 	Exports *AuditExportsService
-	// Get are the public keys that sign checkpoints.
-	SigningKeys *AuditSigningKeysService
 }
 
 // AuditEventsService reads account activity.
@@ -34,23 +28,8 @@ type AuditEventsService struct{ c *Client }
 // AuditRequestsService reads the account's request log.
 type AuditRequestsService struct{ c *Client }
 
-// AuditCheckpointsService reads the signed seals of the audit hash chain.
-type AuditCheckpointsService struct{ c *Client }
-
-// AuditChainService recomputes a day of the audit hash chain.
-type AuditChainService struct{ c *Client }
-
 // AuditExportsService builds and downloads evidence files.
 type AuditExportsService struct{ c *Client }
-
-// AuditSigningKeysService reads the checkpoint signing keys.
-type AuditSigningKeysService struct{ c *Client }
-
-// Redaction notes a field removed from a record.
-type Redaction struct {
-	Path   string `json:"path"`
-	Reason string `json:"reason"`
-}
 
 // Fingerprint identifies the slip a request carried without storing it.
 type Fingerprint struct {
@@ -63,6 +42,9 @@ type Fingerprint struct {
 type APIRequestRecord struct {
 	RequestID  string    `json:"request_id"`
 	ReceivedAt time.Time `json:"received_at"`
+	// LatencyMs is how long this request took, from receiving it to
+	// answering it.
+	LatencyMs int `json:"latency_ms"`
 	// Channel may be nil.
 	Channel    *Channel `json:"channel"`
 	Method     string   `json:"method"`
@@ -78,7 +60,6 @@ type APIRequestRecord struct {
 	UserAgent    string       `json:"user_agent,omitempty"`
 	OutcomeCode  string       `json:"outcome_code,omitempty"`
 	Fingerprint  *Fingerprint `json:"fingerprint,omitempty"`
-	Redactions   []Redaction  `json:"redactions,omitempty"`
 }
 
 // AuditActor is who performed an audited action.
@@ -86,7 +67,6 @@ type AuditActor struct {
 	Type           ActorType `json:"type"`
 	ID             *string   `json:"id,omitempty"`
 	OnBehalfOfUser *string   `json:"on_behalf_of_user_id,omitempty"`
-	Assurance      *string   `json:"assurance,omitempty"`
 }
 
 // AuditTarget is what an audited action was done to.
@@ -102,8 +82,6 @@ type AuditEventRecord struct {
 	Category   AuditCategory `json:"category"`
 	Outcome    AuditOutcome  `json:"outcome"`
 	OccurredAt time.Time     `json:"occurred_at"`
-	// CausationID is the event that caused this one, if any.
-	CausationID *string `json:"causation_id,omitempty"`
 	// RequestID is the API request that caused this event, if any.
 	RequestID *string     `json:"request_id,omitempty"`
 	Actor     AuditActor  `json:"actor"`
@@ -116,7 +94,6 @@ type AuditEventRecord struct {
 	After         map[string]any `json:"after,omitempty"`
 	Reason        *string        `json:"reason,omitempty"`
 	UndoOfEventID *string        `json:"undo_of_event_id,omitempty"`
-	Redactions    []Redaction    `json:"redactions,omitempty"`
 }
 
 // ListAuditEventsParams filters the account activity. Without From and To
@@ -259,11 +236,10 @@ type ExportCreator struct {
 
 // ExportManifest describes a READY evidence file.
 type ExportManifest struct {
+	// Format is "checkslip-audit-export/3".
 	Format string `json:"format"`
-	// HashAlgorithm is "sha-256".
-	HashAlgorithm string `json:"hash_algorithm"`
-	// Canonicalization is "RFC8785".
-	Canonicalization string `json:"canonicalization"`
+	// RecordCount is how many records the file holds.
+	RecordCount int64 `json:"record_count"`
 	// SHA256 covers every byte of the file before its last line.
 	SHA256    string `json:"sha256"`
 	SizeBytes int64  `json:"size_bytes"`
@@ -371,151 +347,4 @@ func (s *AuditExportsService) Download(ctx context.Context, exportID string, opt
 		size = n
 	}
 	return &EvidenceFile{ReadCloser: resp.Body, ReprDigest: resp.Header.Get("Repr-Digest"), Size: size}, nil
-}
-
-// JWK is an Ed25519 public key that signs audit checkpoints.
-type JWK struct {
-	KeyType string `json:"kty"`
-	Curve   string `json:"crv"`
-	X       string `json:"x"`
-	KeyID   string `json:"kid"`
-	Use     string `json:"use"`
-	Alg     string `json:"alg,omitempty"`
-	// Status is ACTIVE or RETIRED. Retired keys stay listed so old
-	// signatures can still be checked.
-	Status string `json:"status,omitempty"`
-}
-
-// SigningKeys returns the public keys that sign the checkpoints in evidence
-// files, as a JWK Set. It needs no API key.
-func (s *AuditSigningKeysService) Get(ctx context.Context, opts ...RequestOption) ([]JWK, error) {
-	var out struct {
-		Keys []JWK `json:"keys"`
-	}
-	req := getReq("/api/audit/signing-keys", nil, opts)
-	req.accept = "application/jwk-set+json"
-	req.noAuth = true
-	if _, err := s.c.doJSON(ctx, req, &out); err != nil {
-		return nil, err
-	}
-	return out.Keys, nil
-}
-
-// CheckpointLane is one lane of a sealed checkpoint, with the row hash that
-// seals it.
-type CheckpointLane struct {
-	Lane    int    `json:"lane"`
-	Seq     int64  `json:"seq"`
-	RowHash string `json:"row_hash"`
-}
-
-// Checkpoint is a signed daily seal of one record stream. Verify the signature
-// with a key from SigningKeys.Get.
-type Checkpoint struct {
-	CheckpointID string           `json:"checkpoint_id"`
-	AccountID    string           `json:"account_id"`
-	Stream       Stream           `json:"stream"`
-	Day          Date             `json:"day"`
-	Sealed       bool             `json:"sealed"`
-	Lanes        []CheckpointLane `json:"lanes"`
-	CreatedAt    time.Time        `json:"created_at"`
-	KeyID        string           `json:"key_id"`
-	Signature    string           `json:"signature"`
-}
-
-// ListCheckpointsParams filters a checkpoint listing.
-type ListCheckpointsParams struct {
-	ListOptions
-	FromDay Date
-	ToDay   Date
-	Stream  Stream
-}
-
-// List returns one page of sealed checkpoints, newest first.
-func (s *AuditCheckpointsService) List(ctx context.Context, params *ListCheckpointsParams, opts ...RequestOption) (*Page[Checkpoint], error) {
-	q := query{}
-	if params != nil {
-		q.page(params.ListOptions)
-		q.date("from_day", params.FromDay)
-		q.date("to_day", params.ToDay)
-		q.str("stream", string(params.Stream))
-	}
-	var out Page[Checkpoint]
-	if _, err := s.c.doJSON(ctx, getReq("/api/audit/checkpoints", q.values(), opts), &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ListAll walks every checkpoint that matches params.
-func (s *AuditCheckpointsService) ListAll(ctx context.Context, params *ListCheckpointsParams, opts ...RequestOption) *Iter[Checkpoint] {
-	p := ListCheckpointsParams{}
-	if params != nil {
-		p = *params
-	}
-	return newIter(ctx, p.Cursor, func(ctx context.Context, cursor string) (*Page[Checkpoint], error) {
-		p.Cursor = cursor
-		return s.List(ctx, &p, opts...)
-	})
-}
-
-// ListLatest returns the newest checkpoint of each record stream.
-//
-// The API wraps these in an object with nothing else in it, so the client
-// returns the checkpoints themselves.
-func (s *AuditCheckpointsService) ListLatest(ctx context.Context, opts ...RequestOption) ([]Checkpoint, error) {
-	var out struct {
-		Items []Checkpoint `json:"items"`
-	}
-	if _, err := s.c.doJSON(ctx, getReq("/api/audit/checkpoints/latest", nil, opts), &out); err != nil {
-		return nil, err
-	}
-	return out.Items, nil
-}
-
-// ChainCheckLane is the result of recomputing one lane of a day.
-type ChainCheckLane struct {
-	Lane   int  `json:"lane"`
-	Intact bool `json:"intact"`
-	// FirstBrokenSeq is the first row that did not match, when Intact is false.
-	FirstBrokenSeq *int64 `json:"first_broken_seq,omitempty"`
-	// MatchesCheckpoint reports whether the recomputed hash matches the seal.
-	MatchesCheckpoint *bool `json:"matches_checkpoint,omitempty"`
-}
-
-// ChainCheck is the result of recomputing one day of the audit hash chain.
-type ChainCheck struct {
-	Intact  bool             `json:"intact"`
-	Day     Date             `json:"day"`
-	Stream  Stream           `json:"stream"`
-	Checked int              `json:"checked"`
-	Lanes   []ChainCheckLane `json:"lanes"`
-}
-
-// CheckChainParams is the input of AuditChainService.Check.
-type CheckChainParams struct {
-	// Day is the UTC day to recompute. Required.
-	Day Date `json:"day"`
-	// Stream is the record stream to recompute. Required.
-	Stream Stream `json:"stream"`
-}
-
-// Check recomputes one day of the audit hash chain and compares it with the
-// sealed checkpoint. Intact is false when a row no longer matches its hash.
-func (s *AuditChainService) Check(ctx context.Context, params *CheckChainParams, opts ...RequestOption) (*ChainCheck, error) {
-	if params == nil || params.Day.IsZero() || params.Stream == "" {
-		return nil, errors.New("checkslip: CheckChainParams.Day and Stream are required")
-	}
-	body, err := jsonBody(params)
-	if err != nil {
-		return nil, err
-	}
-	var out ChainCheck
-	if _, err := s.c.doJSON(ctx, &request{
-		method: http.MethodPost, path: "/api/audit/chain/checks",
-		body: body, ctype: "application/json", opts: opts,
-	}, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }

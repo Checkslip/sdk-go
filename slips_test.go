@@ -53,11 +53,11 @@ func TestLookupFound(t *testing.T) {
 	if !res.Slip.TransferredAt.Equal(time.Date(2026, 10, 29, 3, 33, 30, 0, time.UTC)) {
 		t.Errorf("transferred_at = %v", res.Slip.TransferredAt)
 	}
-	// Fields the SDK does not expose must not leak back out.
+	// Fields that left the customer API must not leak back out.
 	out, _ := json.Marshal(res)
-	for _, banned := range []string{"latency_ms", "upstream_ms", "checked_elsewhere"} {
-		if bytes.Contains(out, []byte(banned)) {
-			t.Errorf("re-encoded result contains %s", banned)
+	for _, withdrawn := range []string{"trace_id", "recorded_by", "chain", "build", "source_domain"} {
+		if bytes.Contains(out, []byte(withdrawn)) {
+			t.Errorf("re-encoded result contains %s", withdrawn)
 		}
 	}
 }

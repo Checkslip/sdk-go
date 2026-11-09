@@ -16,7 +16,9 @@ const contractTestQR = "00330006000001010306902126302105340875102TH9104F86F"
 // They exist so the four SDKs cannot drift apart again.
 
 // canonicalNames is every resource.method from the table, spelled the Go way:
-// 43 API operations, 10 ListAll iterators and the local Webhooks.Verify.
+// 39 API operations, 9 ListAll iterators and the local Webhooks.Verify.
+// Audit checkpoints, chain checks and signing keys left the customer API on
+// 9 Nov 2026 (audit contract 0.8.0), so they are not here.
 var canonicalNames = []string{
 	"Slips.Lookup", "Slips.Get", "Slips.List", "Slips.ListAll", "Slips.Counts",
 	"Slips.Exports.Create", "Slips.Exports.Get", "Slips.Exports.DownloadPart",
@@ -30,11 +32,8 @@ var canonicalNames = []string{
 	"Usage.Get",
 	"Audit.Events.List", "Audit.Events.ListAll", "Audit.Events.Get",
 	"Audit.Requests.List", "Audit.Requests.ListAll", "Audit.Requests.Get",
-	"Audit.Checkpoints.List", "Audit.Checkpoints.ListAll", "Audit.Checkpoints.ListLatest",
-	"Audit.Chain.Check",
 	"Audit.Exports.List", "Audit.Exports.ListAll", "Audit.Exports.Create",
 	"Audit.Exports.Get", "Audit.Exports.Download",
-	"Audit.SigningKeys.Get",
 	"Webhooks.Endpoints.List", "Webhooks.Endpoints.ListAll", "Webhooks.Endpoints.Create",
 	"Webhooks.Endpoints.Get", "Webhooks.Endpoints.Update", "Webhooks.Endpoints.Delete",
 	"Webhooks.Endpoints.Recover", "Webhooks.Endpoints.RotateSecret", "Webhooks.Endpoints.SendTest",
@@ -100,8 +99,8 @@ func walkServices(t *testing.T) []string {
 }
 
 func TestNamingParity(t *testing.T) {
-	if len(canonicalNames) != 54 {
-		t.Fatalf("canonical list has %d names, want 54", len(canonicalNames))
+	if len(canonicalNames) != 49 {
+		t.Fatalf("canonical list has %d names, want 49", len(canonicalNames))
 	}
 	found := walkServices(t)
 	if len(found) == 0 {
@@ -132,28 +131,27 @@ func TestNamingParity(t *testing.T) {
 	}
 }
 
-// TestHiddenFieldsTolerated is the runtime half of tolerate-but-hide: the same
-// payload with and without the fields the API is removing must decode to the
-// same model, and neither may fail.
-func TestHiddenFieldsTolerated(t *testing.T) {
+// TestUnmodelledFieldsTolerated: a response may carry fields the SDK does not
+// model, including ones that left the customer API. Decoding must not depend
+// on the exact set, and the result must be the same either way.
+func TestUnmodelledFieldsTolerated(t *testing.T) {
 	const slip = `"slip":{"trans_ref":"630210534087","transferred_at":"2026-10-29T10:33:30+07:00","amount":{"satang":5000,"currency":"THB"},"sender":{"bank":{"code":"KKP","bot_code":"069","name_th":null,"name_en":null},"name_th":null,"name_en":null,"account":null},"receiver":{"kind":"BANK_ACCOUNT","bank":null,"name_th":null,"name_en":null,"account":null}}`
-	withHidden := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00","latency_ms":812,"upstream_ms":640,"checked_elsewhere":false,` + slip + `}`
-	withoutHidden := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00",` + slip + `}`
+	withExtras := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00","trace_id":"t1","recorded_by":"gw","chain":{},"build":"2026.11.9",` + slip + `}`
+	without := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00",` + slip + `}`
 
 	var a, b SlipCheck
-	if err := json.Unmarshal([]byte(withHidden), &a); err != nil {
-		t.Fatalf("payload with the hidden fields must still decode: %v", err)
+	if err := json.Unmarshal([]byte(withExtras), &a); err != nil {
+		t.Fatalf("a payload with unmodelled fields must still decode: %v", err)
 	}
-	if err := json.Unmarshal([]byte(withoutHidden), &b); err != nil {
-		t.Fatalf("payload without them must decode: %v", err)
+	if err := json.Unmarshal([]byte(without), &b); err != nil {
+		t.Fatalf("the same payload without them must decode: %v", err)
 	}
 	if !reflect.DeepEqual(a, b) {
-		t.Errorf("the hidden fields changed the decoded model:\n with: %+v\n without: %+v", a, b)
+		t.Errorf("unmodelled fields changed the decoded model:\n with: %+v\n without: %+v", a, b)
 	}
 
-	// The webhook payload is the sharp case: checked_elsewhere is marked
-	// required in the spec, so a strict decoder would reject the second body
-	// once the API stops sending it.
+	// The webhook payload no longer marks checked_elsewhere required, but it
+	// must still decode whether or not it is there.
 	withCE := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00","channel":"API","client_reference":"o-1","checked_elsewhere":true,"resolved_after_pending":false}`
 	withoutCE := `{"request_id":"r1","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00","channel":"API","client_reference":"o-1","resolved_after_pending":false}`
 	var c, d SlipCheckedData
@@ -163,8 +161,17 @@ func TestHiddenFieldsTolerated(t *testing.T) {
 	if err := json.Unmarshal([]byte(withoutCE), &d); err != nil {
 		t.Fatalf("webhook payload without checked_elsewhere must decode: %v", err)
 	}
-	if !reflect.DeepEqual(c, d) {
-		t.Errorf("checked_elsewhere changed the decoded webhook model")
+}
+
+// TestContractFieldsArePresent: latency_ms is required on ApiRequestRecord in
+// the contract, so the SDK must carry it.
+func TestContractFieldsArePresent(t *testing.T) {
+	var r APIRequestRecord
+	if err := json.Unmarshal([]byte(`{"request_id":"rq1","received_at":"2026-11-01T00:00:00Z","latency_ms":42,"channel":"API","method":"POST","route":"/api/slips/lookup","http_status":200}`), &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.LatencyMs != 42 {
+		t.Errorf("latency_ms = %d, want 42", r.LatencyMs)
 	}
 }
 
@@ -182,18 +189,10 @@ func TestEnvelopeUnwrapping(t *testing.T) {
 		}
 	})
 
-	t.Run("latest checkpoints and event types unwrap", func(t *testing.T) {
+	t.Run("event types unwrap", func(t *testing.T) {
 		c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-			if strings.Contains(r.URL.Path, "checkpoints") {
-				writeJSON(w, 200, `{"items":[{"checkpoint_id":"cp1","account_id":"a1","stream":"API_REQUEST","day":"2026-11-08","sealed":true,"lanes":[],"created_at":"2026-11-09T00:00:00Z","key_id":"k1","signature":"s"}]}`)
-				return
-			}
 			writeJSON(w, 200, `{"items":[{"type":"slip.checked","description":"d","subscribable":true}]}`)
 		})
-		cps, err := c.Audit.Checkpoints.ListLatest(context.Background())
-		if err != nil || len(cps) != 1 {
-			t.Fatalf("checkpoints %+v err %v", cps, err)
-		}
 		ets, err := c.Webhooks.EventTypes.List(context.Background())
 		if err != nil || len(ets) != 1 {
 			t.Fatalf("event types %+v err %v", ets, err)

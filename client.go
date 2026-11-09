@@ -158,13 +158,10 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		EventTypes: &WebhookEventTypesService{c: c},
 	}
 	c.Audit = &AuditService{
-		c:           c,
-		Events:      &AuditEventsService{c: c},
-		Requests:    &AuditRequestsService{c: c},
-		Checkpoints: &AuditCheckpointsService{c: c},
-		Chain:       &AuditChainService{c: c},
-		Exports:     &AuditExportsService{c: c},
-		SigningKeys: &AuditSigningKeysService{c: c},
+		c:        c,
+		Events:   &AuditEventsService{c: c},
+		Requests: &AuditRequestsService{c: c},
+		Exports:  &AuditExportsService{c: c},
 	}
 	return c
 }

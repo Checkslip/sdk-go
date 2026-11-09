@@ -17,7 +17,7 @@ same address.
 Security fixes go into the latest release. Upgrade with:
 
 ```sh
-go get github.com/Checkslip/checkslip-go@latest
+go get github.com/Checkslip/sdk-go@latest
 ```
 
 ## Handling secrets
