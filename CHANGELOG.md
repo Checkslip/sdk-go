@@ -4,6 +4,17 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.3.0](https://github.com/Checkslip/sdk-go/compare/v0.2.0...v0.3.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **audit:** the four request filters take a list instead of a single value. A call that passed one value now passes a list of one.
+
+### Features
+
+* **audit:** take several values per request filter ([14db03a](https://github.com/Checkslip/sdk-go/commit/14db03a54bd1a8ce51b3a8d9332b8429068834a9))
+
 ## [0.2.0](https://github.com/Checkslip/sdk-go/compare/v0.1.1...v0.2.0) (2026-11-09)
 
 
