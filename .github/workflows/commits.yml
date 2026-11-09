@@ -1,0 +1,51 @@
+name: Commits
+
+# Conventional Commits, checked without pulling a toolchain into the repo.
+# One portable gate in all four Checkslip SDKs so the rule cannot drift.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  conventional:
+    name: Commit messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Subjects follow Conventional Commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASE:-}" ]; then
+            range="${BASE}..${HEAD_SHA}"
+          else
+            range="$(git rev-parse HEAD)^!"
+          fi
+
+          # type(optional scope)!: subject — 72 characters at most.
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9./-]+\))?!?: [^ ].*$'
+          failed=0
+          while IFS= read -r sha; do
+            [ -n "$sha" ] || continue
+            subject="$(git log -1 --format=%s "$sha")"
+            if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+              echo "::error::$sha subject is not a Conventional Commit: $subject"
+              failed=1
+            elif [ "${#subject}" -gt 72 ]; then
+              echo "::error::$sha subject is ${#subject} characters, over 72: $subject"
+              failed=1
+            else
+              echo "ok  $subject"
+            fi
+          done < <(git rev-list --no-merges "$range")
+          exit "$failed"
