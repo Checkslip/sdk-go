@@ -62,4 +62,4 @@ jobs:
       - name: Ask the Go module proxy to fetch the new version
         run: |
           # The proxy spells upper-case letters as "!" + lower case.
-          curl -fsS "https://proxy.golang.org/github.com/!checkslip/checkslip-go/@v/${GITHUB_REF_NAME}.info"
+          curl -fsS "https://proxy.golang.org/github.com/!checkslip/sdk-go/@v/${GITHUB_REF_NAME}.info"
