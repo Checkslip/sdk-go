@@ -16,7 +16,7 @@ go get github.com/Checkslip/sdk-go
 
 ## Quick start
 
-Create an API key in the Checkslip dashboard. Keys start with `csk_`. Keep the key out of your source code and pass it in through the environment or a secret manager.
+Create an API key in the Checkslip web app. Keys start with `csk_`. Keep the key out of your source code and pass it in through the environment or a secret manager.
 
 ```go
 package main
