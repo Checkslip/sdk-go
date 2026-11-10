@@ -192,7 +192,7 @@ func TestListQueryEncoding(t *testing.T) {
 		ListOptions: ListOptions{Limit: 50, Cursor: "abc"},
 		Outcome:     []Outcome{OutcomeFound, OutcomeNotFound},
 		Charged:     []ChargedFilter{ChargedYes, ChargedUnsettled},
-		FreeReason:  []FreeReason{FreeReasonDuplicate},
+		FreeReason:  []CustomerFreeReason{CustomerFreeReasonDuplicate},
 		TransRef:    "630210534087",
 		From:        from,
 	})

@@ -186,8 +186,9 @@ type ListSlipsParams struct {
 	After string
 	// Charged filters by whether a credit was used.
 	Charged []ChargedFilter
-	// FreeReason keeps lookups that used no credit for these reasons.
-	FreeReason []FreeReason
+	// FreeReason keeps lookups that used no credit for these reasons. The
+	// API accepts the nine a customer can receive.
+	FreeReason []CustomerFreeReason
 	// From and To limit the time range. Zero means no limit.
 	From, To time.Time
 }
@@ -292,16 +293,16 @@ type SlipExportParams struct {
 	// Columns lists the CSV columns in order. Required.
 	Columns []ExportColumn `json:"columns"`
 	// Q, TransRef and the other filters work as in ListSlipsParams.
-	Q          string          `json:"q,omitempty"`
-	TransRef   string          `json:"trans_ref,omitempty"`
-	Outcome    []Outcome       `json:"outcome,omitempty"`
-	OutcomeNot []Outcome       `json:"outcome_not,omitempty"`
-	SenderBank string          `json:"sender_bank,omitempty"`
-	APIKey     string          `json:"api_key,omitempty"`
-	Charged    []ChargedFilter `json:"charged,omitempty"`
-	FreeReason []FreeReason    `json:"free_reason,omitempty"`
-	From       *time.Time      `json:"from,omitempty"`
-	To         *time.Time      `json:"to,omitempty"`
+	Q          string               `json:"q,omitempty"`
+	TransRef   string               `json:"trans_ref,omitempty"`
+	Outcome    []Outcome            `json:"outcome,omitempty"`
+	OutcomeNot []Outcome            `json:"outcome_not,omitempty"`
+	SenderBank string               `json:"sender_bank,omitempty"`
+	APIKey     string               `json:"api_key,omitempty"`
+	Charged    []ChargedFilter      `json:"charged,omitempty"`
+	FreeReason []CustomerFreeReason `json:"free_reason,omitempty"`
+	From       *time.Time           `json:"from,omitempty"`
+	To         *time.Time           `json:"to,omitempty"`
 	// Cursor continues a truncated export: pass SlipExport.ContinueCursor.
 	Cursor string `json:"cursor,omitempty"`
 }
