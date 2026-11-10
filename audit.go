@@ -161,9 +161,9 @@ func (s *AuditEventsService) Get(ctx context.Context, eventID string, opts ...Re
 type ListRequestsParams struct {
 	ListOptions
 	From, To time.Time
-	// HTTPStatus, OutcomeCode, Route and Channel each take several values,
-	// and a record matches when it matches any one of them. The API allows
-	// at most 20 statuses, codes or routes, and at most 5 channels.
+	// HTTPStatus, OutcomeCode, Route and Channel each accept one or more
+	// values, and a record matches when it matches any one of them. The API
+	// allows at most 20 statuses, codes or routes, and at most 5 channels.
 	HTTPStatus  []int
 	OutcomeCode []string
 	Route       []string
