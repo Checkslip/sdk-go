@@ -282,11 +282,11 @@ func TestLookupNeedsExactlyOneInput(t *testing.T) {
 	}
 }
 
-// TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields covers both shapes:
-// the API added free_other, stopped counting free_no_credit and
-// free_hold_expired, and will drop those two fields. The client and the API
-// are deployed separately, so either shape has to decode.
-func TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields(t *testing.T) {
+// TestUsageCountsDecodeWithOrWithoutTheDroppedFields covers both shapes: the
+// API has dropped free_no_credit and free_hold_expired, so UsageCounts no
+// longer carries them, but the client and the API are deployed separately and
+// an answer that still sends them has to decode without failing.
+func TestUsageCountsDecodeWithOrWithoutTheDroppedFields(t *testing.T) {
 	const before = `{"checks":12,"charged":7,"free_not_found":1,"free_duplicate":0,"free_unavailable":0,` +
 		`"free_invalid_qr":0,"free_invalid_file":0,"free_qr_tampered":0,"free_too_old":0,` +
 		`"free_no_credit":3,"free_hold_expired":2,"free_system_error":0}`
@@ -298,14 +298,11 @@ func TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields(t *testing.T) {
 	if err := json.Unmarshal([]byte(before), &old); err != nil {
 		t.Fatalf("the shape with the deprecated fields must decode: %v", err)
 	}
-	if old.FreeNoCredit != 3 || old.FreeHoldExpired != 2 {
-		t.Errorf("deprecated counts lost: %+v", old)
-	}
 	if old.FreeOther != 0 {
 		t.Errorf("FreeOther = %d, want 0 against a server that does not send it", old.FreeOther)
 	}
 
-	// A bucket embeds UsageCounts, so the absent fields are tested there too.
+	// A bucket embeds UsageCounts, so the absent field is tested there too.
 	var bucket UsageBucket
 	if err := json.Unmarshal([]byte(after), &bucket); err != nil {
 		t.Fatalf("the shape without the deprecated fields must decode: %v", err)
@@ -313,10 +310,6 @@ func TestUsageCountsDecodeWithOrWithoutTheDeprecatedFields(t *testing.T) {
 	if bucket.FreeOther != 5 {
 		t.Errorf("FreeOther = %d, want 5", bucket.FreeOther)
 	}
-	if bucket.FreeNoCredit != 0 || bucket.FreeHoldExpired != 0 {
-		t.Errorf("absent fields must read as 0: %+v", bucket)
-	}
-
 	if FreeReasonOther != "OTHER" {
 		t.Errorf("FreeReasonOther = %q, want OTHER", FreeReasonOther)
 	}
