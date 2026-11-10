@@ -63,6 +63,31 @@ const (
 	FreeReasonOther FreeReason = "OTHER"
 )
 
+// CustomerFreeReason is a reason a customer can filter by.
+//
+// These are the nine reasons the API accepts in a free_reason filter, which
+// are the ones a customer can receive. FreeReason, the type the API sends
+// back, stays wider: it has to carry a value this version does not know.
+//
+// The filter on SlipsService.Counts is not this type and is not narrowed,
+// because counts ignore it: the API answers which filters it applied in
+// SlipCounts.FiltersApplied and lists the rest in FiltersIgnored, where
+// free_reason appears. Leave it alone rather than making the two look alike.
+type CustomerFreeReason string
+
+// Reasons a customer can filter by.
+const (
+	CustomerFreeReasonNotFound    CustomerFreeReason = "NOT_FOUND"
+	CustomerFreeReasonDuplicate   CustomerFreeReason = "DUPLICATE"
+	CustomerFreeReasonUnavailable CustomerFreeReason = "UNAVAILABLE"
+	CustomerFreeReasonInvalidQR   CustomerFreeReason = "INVALID_QR"
+	CustomerFreeReasonInvalidFile CustomerFreeReason = "INVALID_FILE"
+	CustomerFreeReasonQRTampered  CustomerFreeReason = "QR_TAMPERED"
+	CustomerFreeReasonTooOld      CustomerFreeReason = "TOO_OLD"
+	CustomerFreeReasonSystemError CustomerFreeReason = "SYSTEM_ERROR"
+	CustomerFreeReasonOther       CustomerFreeReason = "OTHER"
+)
+
 // ChargedFilter selects lookups by whether they used a credit.
 type ChargedFilter string
 

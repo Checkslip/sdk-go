@@ -24,4 +24,4 @@ go get github.com/Checkslip/sdk-go@latest
 
 Never commit an API key (`csk_...`) or a webhook secret (`whsec_...`). If one
 leaks, revoke the API key or rotate the webhook secret in the Checkslip
-dashboard right away.
+web app right away.
