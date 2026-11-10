@@ -118,7 +118,7 @@ func WithUserAgent(ua string) Option {
 }
 
 // NewClient returns a Client that authenticates with apiKey, a key that
-// starts with "csk_". Create keys in the Checkslip dashboard.
+// starts with "csk_". Create keys in the Checkslip web app.
 //
 // NewClient does not contact the API. A bad option, such as an unparsable
 // base URL, is reported by the first request.
