@@ -4,6 +4,19 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.4.0](https://github.com/Checkslip/sdk-go/compare/v0.3.1...v0.4.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* ListSlipsParams.FreeReason and SlipExportRequest.FreeReason are []CustomerFreeReason, the nine reasons a customer can receive, instead of []FreeReason. PENDING, NO_CREDIT and HOLD_EXPIRED are not among them, so code that passes one of those constants no longer compiles. The reason a lookup reports back is unchanged: still FreeReason, including a value this version does not know. Counts still take the filter and still ignore it, so nothing changes there.
+* UsageCounts no longer has FreeNoCredit or FreeHoldExpired (free_no_credit and free_hold_expired in the API response). Both had been returning 0 on every account before this release, and the API has now removed them from UsageCounts. Code that reads either one no longer compiles, so delete those reads. A lookup that was not charged, with no reason given, counts in FreeOther.
+
+### Features
+
+* the free_reason filter takes the reasons a customer receives ([cb690eb](https://github.com/Checkslip/sdk-go/commit/cb690ebc3ba5e7a7e967991cf6488d5f819cf458))
+* UsageCounts no longer has FreeNoCredit or FreeHoldExpired ([785a18a](https://github.com/Checkslip/sdk-go/commit/785a18a5f92ffd7d3207b80af79fecb94503da2c))
+
 ## [0.3.1](https://github.com/Checkslip/sdk-go/compare/v0.3.0...v0.3.1) (2026-11-10)
 
 
