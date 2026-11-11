@@ -48,4 +48,23 @@ jobs:
               echo "ok  $subject"
             fi
           done < <(git rev-list --no-merges "$range")
+
+          # Merge commits are skipped above on purpose: GitHub's own
+          # "Merge pull request #N from ..." is not a Conventional Commit and has
+          # to stay allowed, and its subject runs past 72 characters. A local
+          # "Merge branch ..." is a different thing and must not pass. One reached
+          # main on 11 Nov 2026 while this gate was green, because the loop above
+          # reads --no-merges and so never looked at a merge subject at all.
+          while IFS= read -r sha; do
+            [ -n "$sha" ] || continue
+            subject="$(git log -1 --format=%s "$sha")"
+            case "$subject" in
+              "Merge branch"*|"Merge remote-tracking branch"*)
+                echo "::error::$sha is a local merge. Rebase it away, or bring the branch in through a pull request: $subject"
+                failed=1 ;;
+              *)
+                echo "ok  $subject" ;;
+            esac
+          done < <(git rev-list --merges "$range")
+
           exit "$failed"
