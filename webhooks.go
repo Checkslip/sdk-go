@@ -207,6 +207,12 @@ func (s *WebhookEndpointsService) Get(ctx context.Context, endpointID string, op
 	return &out, nil
 }
 
+// The "Reply to the email" sentence below is copied word for word from the
+// contract's fix for ENDPOINT_DISABLED_BY_STAFF, so a customer reading this
+// doc and a customer reading the error body see the same words. If the
+// contract changes it, follow the contract. The sdk workspace's
+// scripts/check-problem-text.py compares the two.
+
 // Update changes the fields set in params. A new URL is checked again as on
 // Create.
 //
