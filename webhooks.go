@@ -78,7 +78,8 @@ type Endpoint struct {
 	Description *string     `json:"description"`
 	EventTypes  []EventType `json:"event_types"`
 	Enabled     bool        `json:"enabled"`
-	// DisabledReason says why Enabled is false, or is empty.
+	// DisabledReason says why Enabled is false. It is empty while the
+	// endpoint is on.
 	DisabledReason DisabledReason `json:"disabled_reason"`
 	// SecretHint is the end of the signing secret, to tell secrets apart.
 	SecretHint string `json:"secret_hint"`
