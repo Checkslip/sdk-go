@@ -53,6 +53,7 @@ const (
 	CodeDeliveryNotFound         ErrorCode = "DELIVERY_NOT_FOUND"
 	CodeEndpointLimitReached     ErrorCode = "ENDPOINT_LIMIT_REACHED"
 	CodeEndpointDisabled         ErrorCode = "ENDPOINT_DISABLED"
+	CodeEndpointDisabledByStaff  ErrorCode = "ENDPOINT_DISABLED_BY_STAFF"
 	CodeEndpointDeleted          ErrorCode = "ENDPOINT_DELETED"
 	CodeRotationInProgress       ErrorCode = "ROTATION_IN_PROGRESS"
 	CodePayloadExpired           ErrorCode = "PAYLOAD_EXPIRED"

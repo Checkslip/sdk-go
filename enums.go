@@ -182,7 +182,13 @@ const (
 	TriggerRecover   AttemptTrigger = "RECOVER"
 )
 
-// DisabledReason says why a webhook endpoint stopped receiving messages.
+// DisabledReason says why a webhook endpoint is off.
+//
+// MANUAL means you turned it off, GONE that your system answered 410, and
+// FAILING that every send failed for 5 days in a row. STAFF means the
+// Checkslip team turned it off, and you cannot turn it back on yourself, so
+// open a case in the web app. The API can add a reason later, and an unknown
+// one reaches you as the raw string, so an exhaustive match needs a catch-all.
 type DisabledReason string
 
 // Disabled reasons.
@@ -193,6 +199,8 @@ const (
 	DisabledGone DisabledReason = "GONE"
 	// DisabledFailing means every delivery failed for 5 days in a row.
 	DisabledFailing DisabledReason = "FAILING"
+	// DisabledStaff means the Checkslip team turned it off.
+	DisabledStaff DisabledReason = "STAFF"
 )
 
 // OrderStatus is the state of a credit order.

@@ -78,7 +78,8 @@ type Endpoint struct {
 	Description *string     `json:"description"`
 	EventTypes  []EventType `json:"event_types"`
 	Enabled     bool        `json:"enabled"`
-	// DisabledReason says why Enabled is false, or is empty.
+	// DisabledReason says why Enabled is false. It is empty while the
+	// endpoint is on.
 	DisabledReason DisabledReason `json:"disabled_reason"`
 	// SecretHint is the end of the signing secret, to tell secrets apart.
 	SecretHint string `json:"secret_hint"`
@@ -206,8 +207,18 @@ func (s *WebhookEndpointsService) Get(ctx context.Context, endpointID string, op
 	return &out, nil
 }
 
+// The "Reply to the email" sentence below is copied word for word from the
+// contract's fix for ENDPOINT_DISABLED_BY_STAFF, so a customer reading this
+// doc and a customer reading the error body see the same words. If the
+// contract changes it, follow the contract. The sdk workspace's
+// scripts/check-problem-text.py compares the two.
+
 // Update changes the fields set in params. A new URL is checked again as on
 // Create.
+//
+// Setting Enabled to true fails with 409 ENDPOINT_DISABLED_BY_STAFF if the
+// Checkslip team turned the endpoint off. Reply to the email about it, or open
+// a case to have it turned on.
 func (s *WebhookEndpointsService) Update(ctx context.Context, endpointID string, params *UpdateEndpointParams, opts ...RequestOption) (*Endpoint, error) {
 	if endpointID == "" {
 		return nil, errors.New("checkslip: endpoint ID is required")

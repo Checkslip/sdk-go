@@ -3,6 +3,7 @@ package checkslip
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"reflect"
@@ -312,5 +313,38 @@ func TestUsageCountsDecodeWithOrWithoutTheDroppedFields(t *testing.T) {
 	}
 	if FreeReasonOther != "OTHER" {
 		t.Errorf("FreeReasonOther = %q, want OTHER", FreeReasonOther)
+	}
+}
+
+// A webhook endpoint the Checkslip team turned off decodes to DisabledStaff,
+// and a reason this version has no constant for still reaches the caller as
+// the raw string, which is what DisabledReason's doc promises.
+func TestEndpointDisabledReasonStaffAndUnknown(t *testing.T) {
+	const tmpl = `{"id":"ep_1","url":"https://shop.test/hooks","description":null,` +
+		`"event_types":["slip.checked"],"enabled":false,"disabled_reason":%q,` +
+		`"secret_hint":"…a1b2","created_at":"2026-11-01T00:00:00Z",` +
+		`"updated_at":"2026-11-01T00:00:00Z"}`
+
+	for _, tc := range []struct {
+		sent string
+		want DisabledReason
+	}{
+		{"STAFF", DisabledStaff},
+		{"SOMETHING_ADDED_LATER", DisabledReason("SOMETHING_ADDED_LATER")},
+	} {
+		var e Endpoint
+		if err := json.Unmarshal([]byte(fmt.Sprintf(tmpl, tc.sent)), &e); err != nil {
+			t.Fatalf("disabled_reason %q must decode: %v", tc.sent, err)
+		}
+		if e.DisabledReason != tc.want {
+			t.Errorf("disabled_reason %q decoded to %q, want %q", tc.sent, e.DisabledReason, tc.want)
+		}
+	}
+
+	if DisabledStaff != "STAFF" {
+		t.Errorf("DisabledStaff = %q, want STAFF", DisabledStaff)
+	}
+	if CodeEndpointDisabledByStaff != "ENDPOINT_DISABLED_BY_STAFF" {
+		t.Errorf("CodeEndpointDisabledByStaff = %q, want ENDPOINT_DISABLED_BY_STAFF", CodeEndpointDisabledByStaff)
 	}
 }
