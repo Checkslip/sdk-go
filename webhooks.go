@@ -208,6 +208,10 @@ func (s *WebhookEndpointsService) Get(ctx context.Context, endpointID string, op
 
 // Update changes the fields set in params. A new URL is checked again as on
 // Create.
+//
+// Setting Enabled to true fails with 409 ENDPOINT_DISABLED_BY_STAFF if the
+// Checkslip team turned the endpoint off. Reply to the email about it, or open
+// a case to have it turned on.
 func (s *WebhookEndpointsService) Update(ctx context.Context, endpointID string, params *UpdateEndpointParams, opts ...RequestOption) (*Endpoint, error) {
 	if endpointID == "" {
 		return nil, errors.New("checkslip: endpoint ID is required")
