@@ -9,7 +9,6 @@ All notable changes to this module are listed here. The format follows
 
 ### Features
 
-* disabled_reason can say STAFF ([85136c7](https://github.com/Checkslip/sdk-go/commit/85136c79fbb13e487261cfcd33bbedd8b86bf860))
 * disabled_reason can say STAFF ([f4bc23a](https://github.com/Checkslip/sdk-go/commit/f4bc23a35e19aa9a1af2a37e67aa2cf0b07f7073))
 
 ## [0.4.0](https://github.com/Checkslip/sdk-go/compare/v0.3.1...v0.4.0) (2026-11-10)
