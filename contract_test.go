@@ -348,3 +348,34 @@ func TestEndpointDisabledReasonStaffAndUnknown(t *testing.T) {
 		t.Errorf("CodeEndpointDisabledByStaff = %q, want ENDPOINT_DISABLED_BY_STAFF", CodeEndpointDisabledByStaff)
 	}
 }
+
+// A ledger entry written when staff restore an account decodes to
+// CreditAccountRestored, and a reason this version has no constant for still
+// reaches the caller as the raw string. The billing contract calls CreditReason
+// an open set, so a value added later must not become a decode error.
+func TestCreditReasonAccountRestoredAndUnknown(t *testing.T) {
+	const tmpl = `{"id":"0193a1f0-0000-7000-8000-000000000001","delta":50,` +
+		`"balance_after":50,"expires_at_after":null,"reason":%q,` +
+		`"free_reason":null,"ref_type":"STAFF","ref_id":null,` +
+		`"created_at":"2026-11-12T00:00:00Z"}`
+
+	for _, tc := range []struct {
+		sent string
+		want CreditReason
+	}{
+		{"ACCOUNT_RESTORED", CreditAccountRestored},
+		{"SOMETHING_ADDED_LATER", CreditReason("SOMETHING_ADDED_LATER")},
+	} {
+		var e CreditEntry
+		if err := json.Unmarshal([]byte(fmt.Sprintf(tmpl, tc.sent)), &e); err != nil {
+			t.Fatalf("reason %q must decode: %v", tc.sent, err)
+		}
+		if e.Reason != tc.want {
+			t.Errorf("reason %q decoded to %q, want %q", tc.sent, e.Reason, tc.want)
+		}
+	}
+
+	if CreditAccountRestored != "ACCOUNT_RESTORED" {
+		t.Errorf("CreditAccountRestored = %q, want ACCOUNT_RESTORED", CreditAccountRestored)
+	}
+}

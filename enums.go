@@ -228,14 +228,15 @@ type CreditReason string
 
 // Credit reasons.
 const (
-	CreditTesterGrant    CreditReason = "TESTER_GRANT"
-	CreditPurchase       CreditReason = "PURCHASE"
-	CreditSlipCharge     CreditReason = "SLIP_CHARGE"
-	CreditSlipFree       CreditReason = "SLIP_FREE"
-	CreditExpire         CreditReason = "EXPIRE"
-	CreditStaffAdjust    CreditReason = "STAFF_ADJUST"
-	CreditAccountDeleted CreditReason = "ACCOUNT_DELETED"
-	CreditDevGrant       CreditReason = "DEV_GRANT"
+	CreditTesterGrant     CreditReason = "TESTER_GRANT"
+	CreditPurchase        CreditReason = "PURCHASE"
+	CreditSlipCharge      CreditReason = "SLIP_CHARGE"
+	CreditSlipFree        CreditReason = "SLIP_FREE"
+	CreditExpire          CreditReason = "EXPIRE"
+	CreditStaffAdjust     CreditReason = "STAFF_ADJUST"
+	CreditAccountDeleted  CreditReason = "ACCOUNT_DELETED"
+	CreditAccountRestored CreditReason = "ACCOUNT_RESTORED"
+	CreditDevGrant        CreditReason = "DEV_GRANT"
 )
 
 // ThresholdBasis says how Balance.Threshold was computed.
