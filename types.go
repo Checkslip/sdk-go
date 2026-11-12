@@ -136,7 +136,8 @@ type Slip struct {
 // details.
 func (s *Slip) IsSummary() bool { return s != nil && s.Sender == nil }
 
-// DuplicateOf points at the earlier lookup of the same transfer.
+// DuplicateOf points at the check that first found this transfer in this
+// account.
 type DuplicateOf struct {
 	RequestID string    `json:"request_id"`
 	CheckedAt time.Time `json:"checked_at"`

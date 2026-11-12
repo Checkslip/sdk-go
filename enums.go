@@ -16,8 +16,8 @@ const (
 	// OutcomeNotFound means the bank has no transfer for this reference.
 	// Whether to accept the payment is your decision.
 	OutcomeNotFound Outcome = "NOT_FOUND"
-	// OutcomeDuplicate means this account looked up the same transfer
-	// before; DuplicateOf points at the first lookup.
+	// OutcomeDuplicate means this account already looked this transfer up
+	// and found it; DuplicateOf points at the check that first found it.
 	OutcomeDuplicate Outcome = "DUPLICATE"
 	// OutcomePending means the bank does not show the transfer yet. Read
 	// the result later with Slips.Get or wait for the slip.checked webhook.
