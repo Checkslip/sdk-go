@@ -338,6 +338,9 @@ type ExportPart struct {
 // rows come back at once (Mode DIRECT); more runs as a background job (Mode
 // JOB): poll GetExport until State is READY. One export runs per account at a
 // time. The file holds payer and payee names, so store it with care.
+//
+// Not available yet: the API does not accept this request, so calling it
+// returns an error.
 func (s *SlipExportsService) Create(ctx context.Context, params *SlipExportParams, opts ...RequestOption) (*SlipExport, error) {
 	if params == nil || len(params.Columns) == 0 {
 		return nil, errors.New("checkslip: SlipExportParams.Columns is required")
@@ -357,6 +360,9 @@ func (s *SlipExportsService) Create(ctx context.Context, params *SlipExportParam
 }
 
 // Get returns the state of a lookup history export.
+//
+// Not available yet: the API does not accept this request, so calling it
+// returns an error.
 func (s *SlipExportsService) Get(ctx context.Context, exportID string, opts ...RequestOption) (*SlipExport, error) {
 	if exportID == "" {
 		return nil, errors.New("checkslip: export ID is required")
@@ -372,6 +378,9 @@ func (s *SlipExportsService) Get(ctx context.Context, exportID string, opts ...R
 // must close the returned body. The part's URL must point at the API host
 // the client uses; the client refuses other hosts so the API key stays
 // with Checkslip.
+//
+// Not available yet: the API does not accept this request, so calling it
+// returns an error.
 func (s *SlipExportsService) DownloadPart(ctx context.Context, part ExportPart, opts ...RequestOption) (io.ReadCloser, error) {
 	if s.c.baseErr != nil {
 		return nil, s.c.baseErr
