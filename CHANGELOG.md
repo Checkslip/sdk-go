@@ -9,7 +9,6 @@ All notable changes to this module are listed here. The format follows
 
 ### Features
 
-* a credit entry's reason can say ACCOUNT_RESTORED ([ffa82a5](https://github.com/Checkslip/sdk-go/commit/ffa82a592893d5e3feb33e3c57302d168b3e5931))
 * a credit entry's reason can say ACCOUNT_RESTORED ([b1c4b92](https://github.com/Checkslip/sdk-go/commit/b1c4b92bc74ecb5522a2937c6efbd6bde41a9b08))
 
 ## [0.5.0](https://github.com/Checkslip/sdk-go/compare/v0.4.0...v0.5.0) (2026-11-11)
