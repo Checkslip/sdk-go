@@ -33,10 +33,12 @@ import (
 func main() {
 	client := checkslip.NewClient(os.Getenv("CHECKSLIP_API_KEY"))
 
-	res, err := client.Slips.Lookup(context.Background(), &checkslip.LookupParams{
-		QR:              "00330006000001010306902126302105340875102TH9104F86F",
-		ClientReference: "order-1001", // optional, comes back in history and webhooks
-	})
+	params := &checkslip.LookupParams{
+		QR: "00330006000001010306902126302105340875102TH9104F86F",
+		// optional, comes back in history and webhooks
+		ClientReference: "order-1001",
+	}
+	res, err := client.Slips.Lookup(context.Background(), params)
 	if err != nil {
 		log.Fatal(err)
 	}
