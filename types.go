@@ -151,7 +151,7 @@ type DuplicateOf struct {
 type SlipCheck struct {
 	// RequestID identifies this lookup. Read it again with Slips.Get.
 	RequestID string `json:"request_id"`
-	// Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING.
+	// Outcome is FOUND, NOT_FOUND or DUPLICATE.
 	Outcome   Outcome   `json:"outcome"`
 	CheckedAt time.Time `json:"checked_at"`
 	// latency_ms, upstream_ms and checked_elsewhere left the Checkslip API,
@@ -166,8 +166,12 @@ type SlipCheck struct {
 	// IdempotencyKey is the Idempotency-Key the request carried. Send the
 	// same lookup again with this key to get this same answer.
 	IdempotencyKey string `json:"-"`
-	// RetryAfter is set on a PENDING answer: the API's suggested wait
-	// before reading the result again with Slips.Get.
+	// RetryAfter is the API's suggested wait before reading the result again
+	// with Slips.Get.
+	//
+	// Deprecated: a lookup is answered in one call and never answers with 202,
+	// so this is always zero. The Retry-After of a 503 UNAVAILABLE error is a
+	// different value. It stays for callers that read it.
 	RetryAfter time.Duration `json:"-"`
 }
 
