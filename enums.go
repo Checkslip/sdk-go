@@ -49,8 +49,10 @@ type FreeReason string
 
 // Free reasons.
 const (
-	FreeReasonNotFound    FreeReason = "NOT_FOUND"
-	FreeReasonDuplicate   FreeReason = "DUPLICATE"
+	FreeReasonNotFound  FreeReason = "NOT_FOUND"
+	FreeReasonDuplicate FreeReason = "DUPLICATE"
+	// FreeReasonPending is never sent: a lookup is answered in one call, so
+	// no lookup is PENDING.
 	FreeReasonPending     FreeReason = "PENDING"
 	FreeReasonUnavailable FreeReason = "UNAVAILABLE"
 	FreeReasonInvalidQR   FreeReason = "INVALID_QR"
@@ -141,8 +143,8 @@ type EventType string
 
 // Webhook event types.
 const (
-	// EventSlipChecked is sent when a lookup finishes, including a
-	// PENDING lookup that later resolves.
+	// EventSlipChecked is sent when a lookup finishes, whatever the outcome,
+	// including NOT_FOUND and DUPLICATE.
 	EventSlipChecked EventType = "slip.checked"
 	// EventWebhookTest is sent by WebhookEndpointsService.SendTest.
 	EventWebhookTest EventType = "webhook.test"
