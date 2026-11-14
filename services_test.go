@@ -66,9 +66,9 @@ func TestBillingUsageBanks(t *testing.T) {
 					t.Errorf("reason %q", r.URL.Query().Get("reason"))
 				}
 			}},
-		route{method: "GET", path: "/api/billing/orders/o1", status: 200, body: `{"id":"o1","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
+		route{method: "GET", path: "/api/billing/orders/o1", status: 200, body: `{"id":"o1","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"vat":{"satang":1302,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
 		route{method: "POST", path: "/api/billing/orders/o1/sync", status: 200, body: `{"id":"o1","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
-		route{method: "GET", path: "/api/billing/packages", status: 200, body: `{"checkout_open":true,"prices_include_vat":true,"items":[{"code":"P1","credits":100,"price":{"satang":19900,"currency":"THB"}}]}`},
+		route{method: "GET", path: "/api/billing/packages", status: 200, body: `{"checkout_open":true,"prices_include_vat":true,"vat_rate_bp":700,"items":[{"code":"P1","credits":100,"price":{"satang":19900,"currency":"THB"},"price_total":{"satang":21293,"currency":"THB"},"price_per_credit":{"satang":199,"currency":"THB"},"price_per_credit_baht":"1.990"}]}`},
 		route{method: "GET", path: "/api/billing/receipts/rc1", status: 200, body: `{"id":"rc1","receipt_no":"RC-202611-0001","seller":{"name":"S"},"vat":{"rate_bp":700,"base":{"satang":100,"currency":"THB"},"amount":{"satang":7,"currency":"THB"}},"lines":[{"description":"d","quantity":1,"amount":{"satang":107,"currency":"THB"}}],"total":{"satang":107,"currency":"THB"},"payment_method":"CARD"}`},
 		route{method: "GET", path: "/api/usage", status: 200,
 			body: `{"interval":"DAY","as_of":"2026-11-02T00:00:00Z","from":"2026-11-01","to":"2026-11-02","timezone":"Asia/Bangkok","buckets":[{"start":"2026-11-01","checks":5,"charged":3,"free_not_found":2}],"totals":{"checks":5,"charged":3}}`,
@@ -98,12 +98,37 @@ func TestBillingUsageBanks(t *testing.T) {
 	if err != nil || o.Amount.String() != "199.00 THB" {
 		t.Fatalf("order %+v %v", o, err)
 	}
+	// VAT sits inside Amount. The fixture's 13.02 is the VAT within 199.00,
+	// not on top of it, which is what the field's doc comment promises.
+	if o.VAT == nil || o.VAT.String() != "13.02 THB" {
+		t.Errorf("order vat = %v, want 13.02 THB", o.VAT)
+	}
+	// An order without VAT leaves the field nil rather than zero, so a
+	// caller can tell "no VAT" from "zero VAT".
+	var noVAT Order
+	if err := json.Unmarshal([]byte(`{"id":"o2","status":"PAID","package_code":"P1","package_name_th":"x","credits":1,"amount":{"satang":100,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`), &noVAT); err != nil {
+		t.Fatal(err)
+	}
+	if noVAT.VAT != nil {
+		t.Errorf("order without vat = %v, want nil", noVAT.VAT)
+	}
 	if _, err := c.Billing.Orders.Sync(ctx, "o1"); err != nil {
 		t.Fatal(err)
 	}
 	pk, err := c.Billing.Packages.List(ctx)
 	if err != nil || !pk.CheckoutOpen || pk.Items[0].Credits != 100 {
 		t.Fatalf("packages %+v %v", pk, err)
+	}
+	// The VAT fields are read, not derived: a reader who multiplies or adds
+	// instead of reading them is the mistake these fields exist to prevent.
+	if pk.VATRateBP != 700 {
+		t.Errorf("vat_rate_bp = %d, want 700", pk.VATRateBP)
+	}
+	if got := pk.Items[0].PriceTotal.Satang; got != 21293 {
+		t.Errorf("price_total = %d satang, want 21293", got)
+	}
+	if got := pk.Items[0].PricePerCreditBaht; got != "1.990" {
+		t.Errorf("price_per_credit_baht = %q, want \"1.990\"", got)
 	}
 	rc, err := c.Billing.Receipts.Get(ctx, "rc1")
 	if err != nil || rc.VAT.RateBP != 700 || rc.PaymentMethod != PaymentCard {
