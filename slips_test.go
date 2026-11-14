@@ -80,7 +80,11 @@ func TestLookupOwnKey(t *testing.T) {
 	}
 }
 
-func TestLookupPending(t *testing.T) {
+// TestLookupParses202PendingShape locks the parsing of a 202 PENDING answer,
+// which the lookup endpoint no longer sends. The parsing stays because
+// SlipCheck.RetryAfter is deprecated rather than removed, and a caller who
+// reads it must keep getting the same value from the same bytes.
+func TestLookupParses202PendingShape(t *testing.T) {
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "15")
 		w.Header().Set("Location", "/api/slips/r2")
