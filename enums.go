@@ -6,7 +6,7 @@ package checkslip
 // Outcome is the result of one slip lookup.
 type Outcome string
 
-// Outcomes. Lookup returns FOUND, NOT_FOUND, DUPLICATE or PENDING; the other
+// Outcomes. Lookup returns FOUND, NOT_FOUND or DUPLICATE; the other
 // values appear in the lookup history and in webhooks for lookups the API
 // answered with an error.
 const (
@@ -19,10 +19,14 @@ const (
 	// OutcomeDuplicate means this account already looked this transfer up
 	// and found it; DuplicateOf points at the check that first found it.
 	OutcomeDuplicate Outcome = "DUPLICATE"
-	// OutcomePending means the bank does not show the transfer yet. Read
-	// the result later with Slips.Get or wait for the slip.checked webhook.
+	// OutcomePending means the bank does not show the transfer yet. The API
+	// no longer returns this outcome: a lookup is answered in one call, and
+	// this case comes back as a 503 UNAVAILABLE error.
+	//
+	// The value stays in the type, so existing code still compiles.
 	OutcomePending Outcome = "PENDING"
-	// OutcomeUnavailable means the bank could not be reached.
+	// OutcomeUnavailable means there is no definite answer from the banking
+	// system right now. No credit is used.
 	OutcomeUnavailable Outcome = "UNAVAILABLE"
 	// OutcomeInvalidQR means the QR text could not be read as a slip QR.
 	OutcomeInvalidQR Outcome = "INVALID_QR"

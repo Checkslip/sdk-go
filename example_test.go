@@ -68,8 +68,6 @@ func ExampleSlipsService_Lookup() {
 		// The bank returned the transfer. Compare it with your order
 		// before you accept the payment.
 		fmt.Println(res.Outcome, res.Slip.TransRef, res.Slip.Amount, *res.Slip.Receiver.Account)
-	case checkslip.OutcomePending:
-		fmt.Println("bank has not shown it yet; read it again after", res.RetryAfter)
 	default:
 		fmt.Println(res.Outcome)
 	}

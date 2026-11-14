@@ -16,8 +16,6 @@
 //	switch res.Outcome {
 //	case checkslip.OutcomeFound:
 //		fmt.Println(res.Slip.Amount, res.Slip.TransferredAt)
-//	case checkslip.OutcomePending:
-//		// Read it later with client.Slips.Get(ctx, res.RequestID).
 //	}
 //
 // # Errors
