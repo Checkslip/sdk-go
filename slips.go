@@ -53,7 +53,7 @@ type LookupParams struct {
 // Lookup asks the sending bank for the transfer a slip refers to. Pass either
 // the QR text of the slip in QR, or the slip image in Image.
 //
-// The answer's Outcome is FOUND, NOT_FOUND, DUPLICATE or PENDING. Only FOUND
+// The answer's Outcome is FOUND, NOT_FOUND or DUPLICATE. Only FOUND
 // uses a credit. A QR the API cannot use comes back as an *Error with a code
 // such as CodeInvalidQR, CodeQRTampered or CodeTooOld, and uses no credit.
 //
@@ -150,9 +150,8 @@ func (s *SlipsService) lookup(ctx context.Context, body []byte, ctype string, op
 	return &out, nil
 }
 
-// Get returns one lookup of this account by its request ID. Use it to read
-// the result of a PENDING lookup later. An unknown ID and another account's
-// ID both return an error for which IsNotFound is true.
+// Get returns one lookup of this account by its request ID. An unknown ID
+// and another account's ID both return an error for which IsNotFound is true.
 func (s *SlipsService) Get(ctx context.Context, requestID string, opts ...RequestOption) (*SlipCheckRecord, error) {
 	if requestID == "" {
 		return nil, errors.New("checkslip: request ID is required")

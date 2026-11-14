@@ -50,8 +50,6 @@ func main() {
 		fmt.Println("ธนาคารไม่มีรายการโอนของเลขอ้างอิงนี้")
 	case checkslip.OutcomeDuplicate:
 		fmt.Println("เคยดึงข้อมูลแล้ว ครั้งแรกเมื่อ", res.DuplicateOf.CheckedAt)
-	case checkslip.OutcomePending:
-		fmt.Println("ธนาคารยังไม่แสดงรายการนี้ ถามใหม่หลัง", res.RetryAfter)
 	}
 }
 ```
@@ -70,7 +68,7 @@ defer f.Close()
 res, err := client.Slips.Lookup(ctx, &checkslip.LookupParams{Image: f})
 ```
 
-ผล `PENDING` จะได้คำตอบทีหลัง อ่านผลด้วย `client.Slips.Get(ctx, res.RequestID)` หลังเวลาใน `res.RetryAfter` หรือรอ webhook `slip.checked`
+การตรวจสอบรายการโอนกับธนาคารจบในครั้งเดียว `Lookup` จึงไม่คืน `OutcomePending` และ `res.RetryAfter` เป็น 0 เสมอ · `RetryAfter` ถูกทำเครื่องหมาย deprecated ไว้ แต่ยังคงอยู่สำหรับโค้ดที่อ่านค่านี้ · ถ้าธนาคารยังไม่แสดงรายการ จะได้ error 503 `UNAVAILABLE` แทน
 
 ## ฟังก์ชันที่มี
 

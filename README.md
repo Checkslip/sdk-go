@@ -50,8 +50,6 @@ func main() {
 		fmt.Println("the bank has no transfer for this reference")
 	case checkslip.OutcomeDuplicate:
 		fmt.Println("looked up before, first at", res.DuplicateOf.CheckedAt)
-	case checkslip.OutcomePending:
-		fmt.Println("the bank does not show it yet; ask again after", res.RetryAfter)
 	}
 }
 ```
@@ -70,7 +68,7 @@ defer f.Close()
 res, err := client.Slips.Lookup(ctx, &checkslip.LookupParams{Image: f})
 ```
 
-A `PENDING` lookup is settled later. Read it with `client.Slips.Get(ctx, res.RequestID)` after `res.RetryAfter`, or wait for the `slip.checked` webhook.
+A lookup is answered in one call, so `Lookup` does not return `OutcomePending` and `res.RetryAfter` is always zero. `RetryAfter` is deprecated and stays for callers that read it. When the bank does not show the transfer you get a 503 `UNAVAILABLE` error instead.
 
 ## What the client covers
 

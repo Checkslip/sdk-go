@@ -14,8 +14,8 @@
     "Read the API key from the environment and keep it on a server. Never hard-code it and never ship it to a browser.",
     "Checkslip looks up the transfer with the sending bank and returns what the bank holds. It does not judge whether a slip is real or fake; accepting the payment is the caller's decision.",
     "Amounts come back in satang, where 100 satang is 1 baht. Account numbers come back as the last four digits only.",
-    "FOUND, NOT_FOUND, DUPLICATE and PENDING are normal outcomes and are returned, not raised. Only a problem with the request itself is an error.",
-    "A 202 answer is a success, not a failure: the outcome is PENDING and the result arrives later by webhook or by reading the lookup again.",
+    "FOUND, NOT_FOUND and DUPLICATE are normal outcomes and are returned, not raised. Only a problem with the request itself is an error.",
+    "A lookup is answered in one call: the lookup endpoint does not answer with 202 and does not return the PENDING outcome, and when the bank does not show the transfer you get a 503 UNAVAILABLE error.",
     "Pass your own idempotency key when a job can be retried across processes, so a repeat returns the first answer and is never charged twice.",
     "Check the signature of every webhook before trusting it, and pass both secrets during a rotation."
   ]
