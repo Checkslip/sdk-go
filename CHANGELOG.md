@@ -4,6 +4,14 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.6.1](https://github.com/Checkslip/sdk-go/compare/v0.6.0...v0.6.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **docs:** PENDING is not returned; you get a 503 UNAVAILABLE error ([4ad3c2b](https://github.com/Checkslip/sdk-go/commit/4ad3c2b7a3365e97527156eeac6b5fbcdb38375b))
+* RetryAfter on a lookup is deprecated and always zero ([2650a8f](https://github.com/Checkslip/sdk-go/commit/2650a8f934984529d8f2d1bc292c804bf833174f))
+
 ## [0.6.0](https://github.com/Checkslip/sdk-go/compare/v0.5.0...v0.6.0) (2026-11-12)
 
 
