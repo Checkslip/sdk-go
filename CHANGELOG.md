@@ -4,6 +4,18 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.7.0](https://github.com/Checkslip/sdk-go/compare/v0.6.1...v0.7.0) (2026-11-14)
+
+
+### Features
+
+* Order.VAT, Package.PriceTotal and the two other VAT fields ([b37b466](https://github.com/Checkslip/sdk-go/commit/b37b46678c7b41ace6919e4e221ffb7d0723534b))
+
+
+### Bug Fixes
+
+* **docs:** the webhook docs stop describing the cancelled recheck ([d52a0a5](https://github.com/Checkslip/sdk-go/commit/d52a0a566401558d56cf78f8c399287b334a101f))
+
 ## [0.6.1](https://github.com/Checkslip/sdk-go/compare/v0.6.0...v0.6.1) (2026-11-14)
 
 
