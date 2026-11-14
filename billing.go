@@ -266,14 +266,15 @@ type Package struct {
 	NameTH string `json:"name_th"`
 	NameEN string `json:"name_en"`
 	Price  Money  `json:"price"`
-	// PriceTotal is what a customer pays for this package now: Price plus
-	// VAT when VAT is in effect and prices exclude it; otherwise it is the
-	// same as Price. An order opened now asks for this amount, so show this
-	// one as the price to pay.
+	// PriceTotal is what a customer pays for this package: Price plus VAT
+	// when VAT is in effect and prices exclude it; otherwise it is the same
+	// as Price. An order opened now asks for this amount, so show this one
+	// as the price to pay.
 	PriceTotal     Money `json:"price_total"`
 	PricePerCredit Money `json:"price_per_credit"`
-	// PricePerCreditBaht is the same price per credit, in baht, as text
-	// with three decimals, rounded half up at a tenth of a satang. Two
+	// PricePerCreditBaht is the same price per credit as PricePerCredit, in
+	// baht, as text with three decimals, rounded half up at a tenth of a
+	// satang. Two
 	// packages that tie at a whole satang differ here (0.175 against
 	// 0.167). Show it as sent rather than working it out from Price and
 	// Credits. Like PricePerCredit it divides Price, not PriceTotal, so it
@@ -293,8 +294,8 @@ type PackageList struct {
 	CheckoutOpen     bool `json:"checkout_open"`
 	PricesIncludeVAT bool `json:"prices_include_vat"`
 	// VATRateBP is the VAT rate in force now, in basis points: 700 is 7%,
-	// and 0 means no VAT applies anywhere yet. Read it to find out whether
-	// VAT is in effect.
+	// and 0 means no VAT applies to any package or order yet. Read it to
+	// find out whether VAT is in effect.
 	VATRateBP int       `json:"vat_rate_bp"`
 	Items     []Package `json:"items"`
 }
