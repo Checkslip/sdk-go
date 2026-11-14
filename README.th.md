@@ -33,10 +33,12 @@ import (
 func main() {
 	client := checkslip.NewClient(os.Getenv("CHECKSLIP_API_KEY"))
 
-	res, err := client.Slips.Lookup(context.Background(), &checkslip.LookupParams{
-		QR:              "00330006000001010306902126302105340875102TH9104F86F",
-		ClientReference: "order-1001", // ไม่บังคับ ค่านี้จะกลับมาในประวัติและ webhook
-	})
+	params := &checkslip.LookupParams{
+		QR: "00330006000001010306902126302105340875102TH9104F86F",
+		// ไม่บังคับ ค่านี้จะกลับมาในประวัติและ webhook
+		ClientReference: "order-1001",
+	}
+	res, err := client.Slips.Lookup(context.Background(), params)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +51,8 @@ func main() {
 	case checkslip.OutcomeNotFound:
 		fmt.Println("ธนาคารไม่มีรายการโอนของเลขอ้างอิงนี้")
 	case checkslip.OutcomeDuplicate:
-		fmt.Println("เคยดึงข้อมูลแล้ว ครั้งแรกเมื่อ", res.DuplicateOf.CheckedAt)
+		fmt.Println("เคยดึงข้อมูลแล้ว ครั้งแรกเมื่อ",
+			res.DuplicateOf.CheckedAt)
 	}
 }
 ```
