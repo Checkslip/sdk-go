@@ -175,12 +175,16 @@ func (s *BillingLedgerService) ListAll(ctx context.Context, params *LedgerParams
 
 // Order is a purchase of credits.
 type Order struct {
-	ID            string        `json:"id"`
-	Status        OrderStatus   `json:"status"`
-	PackageCode   string        `json:"package_code"`
-	PackageNameTH string        `json:"package_name_th"`
-	Credits       int64         `json:"credits"`
-	Amount        Money         `json:"amount"`
+	ID            string      `json:"id"`
+	Status        OrderStatus `json:"status"`
+	PackageCode   string      `json:"package_code"`
+	PackageNameTH string      `json:"package_name_th"`
+	Credits       int64       `json:"credits"`
+	Amount        Money       `json:"amount"`
+	// VAT is the VAT already inside Amount, fixed when the order was made.
+	// Do not add it to Amount: Amount is what the order asks for. It is nil
+	// when the order carries no VAT.
+	VAT           *Money        `json:"vat,omitempty"`
 	PaymentMethod PaymentMethod `json:"payment_method,omitempty"`
 	ReceiptID     *string       `json:"receipt_id,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
@@ -258,12 +262,24 @@ func (s *BillingOrdersService) Sync(ctx context.Context, orderID string, opts ..
 
 // Package is a credit package for sale.
 type Package struct {
-	Code           string `json:"code"`
-	NameTH         string `json:"name_th"`
-	NameEN         string `json:"name_en"`
-	Price          Money  `json:"price"`
-	PricePerCredit Money  `json:"price_per_credit"`
-	Credits        int64  `json:"credits"`
+	Code   string `json:"code"`
+	NameTH string `json:"name_th"`
+	NameEN string `json:"name_en"`
+	Price  Money  `json:"price"`
+	// PriceTotal is what a customer pays for this package now: Price plus
+	// VAT when VAT is in effect and prices exclude it; otherwise it is the
+	// same as Price. An order opened now asks for this amount, so show this
+	// one as the price to pay.
+	PriceTotal     Money `json:"price_total"`
+	PricePerCredit Money `json:"price_per_credit"`
+	// PricePerCreditBaht is the same price per credit, in baht, as text
+	// with three decimals, rounded half up at a tenth of a satang. Two
+	// packages that tie at a whole satang differ here (0.175 against
+	// 0.167). Show it as sent rather than working it out from Price and
+	// Credits. Like PricePerCredit it divides Price, not PriceTotal, so it
+	// excludes VAT whenever Price does.
+	PricePerCreditBaht string `json:"price_per_credit_baht"`
+	Credits            int64  `json:"credits"`
 	// ValidityDays is how long the credits last. Credits from every
 	// package join one balance that lasts from the latest purchase.
 	ValidityDays int  `json:"validity_days"`
@@ -274,9 +290,13 @@ type Package struct {
 // PackageList is the list of credit packages.
 type PackageList struct {
 	// CheckoutOpen reports whether packages can be bought right now.
-	CheckoutOpen     bool      `json:"checkout_open"`
-	PricesIncludeVAT bool      `json:"prices_include_vat"`
-	Items            []Package `json:"items"`
+	CheckoutOpen     bool `json:"checkout_open"`
+	PricesIncludeVAT bool `json:"prices_include_vat"`
+	// VATRateBP is the VAT rate in force now, in basis points: 700 is 7%,
+	// and 0 means no VAT applies anywhere yet. Read it to find out whether
+	// VAT is in effect.
+	VATRateBP int       `json:"vat_rate_bp"`
+	Items     []Package `json:"items"`
 }
 
 // List returns every credit package with its price, credits and
