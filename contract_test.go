@@ -249,7 +249,7 @@ func TestEnvelopeUnwrapping(t *testing.T) {
 }
 
 func TestAcceptedIsNotAnError(t *testing.T) {
-	t.Run("202 on a lookup is a PENDING result", func(t *testing.T) {
+	t.Run("a 202 PENDING body parses, though the API no longer sends one", func(t *testing.T) {
 		c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 202, `{"request_id":"r1","outcome":"PENDING","checked_at":"2026-10-29T10:41:02+07:00","slip":null}`)
 		})
