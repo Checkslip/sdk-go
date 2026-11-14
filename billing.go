@@ -278,11 +278,14 @@ type Package struct {
 	// PackageList.PricesIncludeVAT is false. Read the amount to pay from
 	// PriceTotal; do not multiply this by Credits to get it.
 	PricePerCredit Money `json:"price_per_credit"`
-	// PricePerCreditBaht is the price of one credit in baht with 3 decimals,
-	// from Price divided by Credits, so it excludes VAT when
-	// PackageList.PricesIncludeVAT is false. Two packages that tie at a whole
-	// satang differ here (0.175 against 0.167). It is display text: show it
-	// as sent instead of computing it.
+	// PricePerCreditBaht is the same price per credit as PricePerCredit, in
+	// baht, as display text with three decimals, rounded half up at a tenth
+	// of a satang.
+	//
+	// Two packages that tie at a whole satang differ here (0.175 against
+	// 0.167). Show it as sent instead of computing it. It divides Price, not
+	// PriceTotal, so it excludes VAT when PackageList.PricesIncludeVAT is
+	// false.
 	PricePerCreditBaht string `json:"price_per_credit_baht"`
 	Credits            int64  `json:"credits"`
 	// ValidityDays is how long the credits last. Credits from every
