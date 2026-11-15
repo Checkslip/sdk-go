@@ -171,7 +171,7 @@ type SlipCheck struct {
 	//
 	// Deprecated: a lookup is answered in one call and never answers with 202,
 	// so this is always zero. The Retry-After of a 503 UNAVAILABLE error is a
-	// different value. It stays for callers that read it.
+	// different value. It stays so existing code keeps working.
 	RetryAfter time.Duration `json:"-"`
 }
 
