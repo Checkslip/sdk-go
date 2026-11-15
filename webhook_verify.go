@@ -214,10 +214,9 @@ type SlipCheckedData struct {
 	ClientReference *string      `json:"client_reference"`
 	Slip            *Slip        `json:"slip,omitempty"`
 	DuplicateOf     *DuplicateOf `json:"duplicate_of,omitempty"`
-	// ResolvedAfterPending is always false today: a lookup is answered in one
-	// call, so no lookup is PENDING first. The field stays, and stays
-	// required, so code that reads it keeps working. A true value used to mean
-	// this lookup came back PENDING and this is its final answer.
+	// ResolvedAfterPending is always false today: no lookup is answered
+	// PENDING, so none is resolved after one. The field stays in the payload,
+	// and required, so code that reads it keeps working.
 	ResolvedAfterPending bool `json:"resolved_after_pending"`
 }
 
