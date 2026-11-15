@@ -19,9 +19,9 @@ const (
 	// OutcomeDuplicate means this account already looked this transfer up
 	// and found it; DuplicateOf points at the check that first found it.
 	OutcomeDuplicate Outcome = "DUPLICATE"
-	// OutcomePending means the bank does not show the transfer yet. The API
-	// no longer returns this outcome: a lookup is answered in one call, and
-	// this case comes back as a 503 UNAVAILABLE error.
+	// OutcomePending is not in use yet. A lookup is answered in one call, so
+	// when the bank does not show the transfer the API answers with a 503
+	// UNAVAILABLE error and does not look again.
 	//
 	// The value stays in the type, so existing code still compiles.
 	OutcomePending Outcome = "PENDING"
