@@ -4,7 +4,7 @@
 
 The official Go client for the [Checkslip](https://checkslip.com) API.
 
-Checkslip looks up a Thai bank transfer from its slip. You send the QR text printed on the slip, or a picture of the slip, and Checkslip asks the sending bank for the transfer it holds and returns that data. Checkslip reports what the bank has. Whether to accept the payment is up to you, so compare the amount, the receiver and the time with your order.
+Checkslip looks up a Thai bank transfer from its slip. You send the QR text printed on the slip, or a picture of the slip, and Checkslip asks the banking system for the transfer and returns that data. Checkslip reports what the sending bank holds, as far as it shows it. Whether to accept the payment is up to you, so compare the amount, the receiver and the time with your order.
 
 The SDK needs Go 1.22 or later and has no dependencies outside the standard library.
 

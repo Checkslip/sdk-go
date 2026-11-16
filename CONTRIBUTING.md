@@ -19,8 +19,8 @@ Before you open a pull request:
 4. Give every exported identifier a doc comment.
 5. Add a line under "Unreleased" in CHANGELOG.md.
 
-Checkslip looks up a transfer with the sending bank and reports what the bank
-returned; the customer decides whether to accept the payment. Please describe
-lookups that way in code and docs.
+Checkslip looks up a transfer with the banking system and reports what the
+sending bank holds; the customer decides whether to accept the payment.
+Please describe lookups that way in code and docs.
 
 For a security problem, follow SECURITY.md instead of opening an issue.
