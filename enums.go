@@ -10,7 +10,7 @@ type Outcome string
 // values appear in the lookup history and in webhooks for lookups the API
 // answered with an error.
 const (
-	// OutcomeFound means the sending bank returned the transfer. This is
+	// OutcomeFound means the transfer was found in the banking system. This is
 	// the only outcome that uses a credit.
 	OutcomeFound Outcome = "FOUND"
 	// OutcomeNotFound means the bank has no transfer for this reference.
