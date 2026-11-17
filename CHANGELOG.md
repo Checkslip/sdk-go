@@ -4,6 +4,13 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.7.2](https://github.com/Checkslip/sdk-go/compare/v0.7.1...v0.7.2) (2026-11-17)
+
+
+### Miscellaneous Chores
+
+* release 0.7.2 so the corrected sentence reaches the docs page ([8a20155](https://github.com/Checkslip/sdk-go/commit/8a20155d6a51df1e120d16f8b25aa16a47580d76))
+
 ## [0.7.1](https://github.com/Checkslip/sdk-go/compare/v0.7.0...v0.7.1) (2026-11-17)
 
 
