@@ -7,9 +7,17 @@ All notable changes to this module are listed here. The format follows
 ## [0.7.2](https://github.com/Checkslip/sdk-go/compare/v0.7.1...v0.7.2) (2026-11-17)
 
 
-### Miscellaneous Chores
+### Documentation
 
-* release 0.7.2 so the corrected sentence reaches the docs page ([8a20155](https://github.com/Checkslip/sdk-go/commit/8a20155d6a51df1e120d16f8b25aa16a47580d76))
+Wording only; no code or behaviour changed in this release.
+
+* `OutcomeFound` is documented as the transfer being found in the banking
+  system, which is how a lookup is answered. This is the doc you read while
+  writing a `switch` on `Outcome`, and it is what pkg.go.dev serves.
+* Why it matters: a lookup is answered through the banking system's sources,
+  so naming the bank that sent the money as the one acting reads as though
+  Checkslip contacts that bank itself. That bank is still named where it
+  belongs, as the holder of the record.
 
 ## [0.7.1](https://github.com/Checkslip/sdk-go/compare/v0.7.0...v0.7.1) (2026-11-17)
 
