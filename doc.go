@@ -2,9 +2,11 @@
 // (https://checkslip.com/docs).
 //
 // Checkslip looks up a Thai bank transfer from its slip. Send the QR text on
-// the slip, or a picture of the slip, and Checkslip asks the sending bank for
-// the transfer it holds and returns that data. Whether to accept the payment
-// is your decision: compare the amount, receiver and time with your order.
+// the slip, or a picture of the slip, and Checkslip asks the banking system
+// for the transfer and returns that data. Checkslip reports what
+// the sending bank holds, as far as it shows it. Whether to accept the
+// payment is your decision: compare the amount, receiver and time with
+// your order.
 //
 // # Getting started
 //

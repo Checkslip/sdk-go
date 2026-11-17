@@ -50,8 +50,8 @@ type LookupParams struct {
 	ClientReference string `json:"client_reference,omitempty"`
 }
 
-// Lookup asks the sending bank for the transfer a slip refers to. Pass either
-// the QR text of the slip in QR, or the slip image in Image.
+// Lookup asks the banking system for the transfer a slip refers to. Pass
+// either the QR text of the slip in QR, or the slip image in Image.
 //
 // The answer's Outcome is FOUND, NOT_FOUND or DUPLICATE. Only FOUND
 // uses a credit. A QR the API cannot use comes back as an *Error with a code
