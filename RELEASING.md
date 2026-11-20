@@ -40,8 +40,10 @@ and both have caught someone out:
   **start no jobs at all**: no steps, no logs, conclusion failure. They block
   nothing. The suite is run against that branch by the `verify-release-pr` job
   in `release-please.yml`, and `report-release-pr` posts that result as the
-  **Release PR verified** check on the branch head, then deletes the empty runs
-  (only ever a run whose job count is zero). Read that check.
+  **Release PR verified** check on the branch head. It then tries to approve
+  the empty runs, which is what those runs are waiting for, and deletes them
+  if the workflow token cannot approve its own runs. Either way it only ever
+  touches a run whose job count is zero. Read that check.
 - If you edit the release branch by hand, for example to add a line to
   `CHANGELOG.md`, the commit subject still has to be a Conventional Commit:
   `commits.yml` reads **every** commit in the pull request, and on this host
