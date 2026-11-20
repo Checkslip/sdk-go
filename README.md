@@ -118,6 +118,19 @@ Quote `RequestID` when you contact Checkslip support. A QR that cannot be used (
 
 The helpers are `IsRateLimited`, `IsUnauthenticated`, `IsForbidden`, `IsNotFound`, `IsNoCredit`, `IsValidation`, `IsServerError`, `HasCode` and `AsError`. A failed connection or a cancelled context is returned as a plain error, not as `*checkslip.Error`.
 
+### No definite answer (503 `UNAVAILABLE`)
+
+A lookup the banking system does not settle comes back as a 503 with code `UNAVAILABLE`, and uses no credit. `apiErr.Reason` says why:
+
+| `Reason` | What it means | `Retry-After` |
+| --- | --- | --- |
+| `checkslip.ReasonNotSeen` | The banking system does not show this transfer at the time of the lookup. One made moments ago may not be there yet. | 60 s |
+| `checkslip.ReasonSourceDown` | No usable answer from the banking system. | 30 s |
+
+Handle an empty or unknown reason like `ReasonSourceDown`. An `UNAVAILABLE` that comes from a failure of ours carries no reason at all, and the API can add words this version of the client does not know.
+
+`Lookup` always sends an `Idempotency-Key`, so the client has already waited out `Retry-After` and asked again (twice by default) before you see this error: a `NOT_SEEN` lookup can take about two minutes to return. Build the client with `checkslip.WithMaxRetries(0)` to do that waiting yourself.
+
 ## Retries
 
 The client sends a failed request again, up to 2 more times by default, waiting longer each time (from 0.5 s, doubling up to 8 s, with random jitter).

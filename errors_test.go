@@ -108,3 +108,82 @@ func TestErrorRetryAfterParsed(t *testing.T) {
 		t.Fatalf("got %+v", e)
 	}
 }
+
+// The reason on a 503 UNAVAILABLE (verify contract 0.80.2). It says why the
+// lookup has no definite answer, and the Retry-After differs with it.
+func TestUnavailableReason(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		reason     string
+		retryAfter string
+		want       UnavailableReason
+		wantWait   time.Duration
+	}{
+		{"not seen", `,"reason":"NOT_SEEN"`, "60", ReasonNotSeen, 60 * time.Second},
+		{"source down", `,"reason":"SOURCE_DOWN"`, "30", ReasonSourceDown, 30 * time.Second},
+		// An open set: a word added after this version of the client is kept
+		// as it was sent, so the caller can log it and fall back.
+		{"a reason this version does not know", `,"reason":"BANK_REFUSED_US"`, "30", UnavailableReason("BANK_REFUSED_US"), 30 * time.Second},
+		// Our own failure carries no reason at all.
+		{"no reason", "", "30", "", 30 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/problem+json")
+				w.Header().Set("X-Request-Id", "req-503")
+				w.Header().Set("Retry-After", tc.retryAfter)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{"type":"https://checkslip.com/problems/unavailable","title":"ติดต่อไม่ได้","status":503,"instance":"/api/slips/lookup","code":"UNAVAILABLE"` + tc.reason + `}`))
+			}, WithMaxRetries(0))
+
+			_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: contractTestQR})
+			e := AsError(err)
+			if e == nil {
+				t.Fatalf("want *Error, got %v", err)
+			}
+			if e.Code != CodeUnavailable {
+				t.Errorf("Code = %q, want UNAVAILABLE", e.Code)
+			}
+			if e.Reason != tc.want {
+				t.Errorf("Reason = %q, want %q", e.Reason, tc.want)
+			}
+			if e.RetryAfter != tc.wantWait {
+				t.Errorf("RetryAfter = %v, want %v", e.RetryAfter, tc.wantWait)
+			}
+		})
+	}
+}
+
+// Every other error leaves Reason empty, so a caller cannot read a stale
+// reason off an error that has nothing to do with a lookup.
+func TestReasonEmptyOnOtherErrors(t *testing.T) {
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeProblem(w, http.StatusUnprocessableEntity, "INVALID_QR")
+	}, WithMaxRetries(0))
+
+	_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: contractTestQR})
+	if e := AsError(err); e == nil || e.Reason != "" {
+		t.Fatalf("Reason = %+v, want empty", e)
+	}
+}
+
+// What the README promises about the wait: Lookup always sends an
+// Idempotency-Key, so the client itself waits out the Retry-After and asks
+// again twice before the caller sees NOT_SEEN.
+func TestUnavailableIsRetriedWithTheReasonsRetryAfter(t *testing.T) {
+	c, rec := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.Header().Set("Retry-After", "60")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"type":"https://checkslip.com/problems/unavailable","title":"ติดต่อไม่ได้","status":503,"instance":"/api/slips/lookup","code":"UNAVAILABLE","reason":"NOT_SEEN"}`))
+	})
+
+	_, err := c.Slips.Lookup(context.Background(), &LookupParams{QR: contractTestQR})
+	if e := AsError(err); e == nil || e.Reason != ReasonNotSeen {
+		t.Fatalf("want NOT_SEEN after the retries, got %v", err)
+	}
+	want := []time.Duration{60 * time.Second, 60 * time.Second}
+	if got := rec.Waits(); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("waits = %v, want %v", got, want)
+	}
+}
