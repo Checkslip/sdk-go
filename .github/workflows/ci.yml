@@ -66,3 +66,28 @@ jobs:
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
+
+  models:
+    name: Models match the published API document
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      # A model that demands a field the document does not promise fails on a
+      # real answer: that is how reading a credit balance broke in two clients
+      # for eleven days (checkslip/billing h-mwp349h7fd1). The document the
+      # site serves is the one customers' calls are answered by, so that is
+      # what this reads; if it cannot be fetched the script says so and passes.
+      - name: Compare the models with the document the site serves
+        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json
+      # The control: drop a field the document promises and the check above has
+      # to go red. A checker that cannot fail is not a checker.
+      - name: Prove the check can fail
+        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json --prove
+      # The fixtures are the other half: a body we test that the API cannot
+      # send is a test of a shape nobody receives, and a body missing a field
+      # the API always sends is a field no test has ever seen.
+      - name: Compare the fixtures with the document
+        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json --fixtures
