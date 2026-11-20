@@ -66,6 +66,22 @@ const (
 	CodePayloadIntegrityMismatch ErrorCode = "PAYLOAD_INTEGRITY_MISMATCH"
 )
 
+// UnavailableReason says why a 503 UNAVAILABLE lookup has not settled whether
+// a matching transfer exists. New reasons may appear, so handle one you do not
+// know, and an empty one, like ReasonSourceDown.
+type UnavailableReason string
+
+// Reasons a lookup can be UNAVAILABLE. The Retry-After the API sends differs
+// by reason.
+const (
+	// ReasonNotSeen means the banking system does not show this transfer at
+	// the time of the lookup. A transfer made moments ago may not be there
+	// yet.
+	ReasonNotSeen UnavailableReason = "NOT_SEEN"
+	// ReasonSourceDown means no usable answer from the banking system.
+	ReasonSourceDown UnavailableReason = "SOURCE_DOWN"
+)
+
 // Error is returned for every API response with status 400 or above. The
 // API sends errors as RFC 9457 problem details; Error holds their fields.
 //
@@ -80,6 +96,12 @@ type Error struct {
 	StatusCode int
 	// Code is the machine-readable error code, for example CodeInvalidQR.
 	Code ErrorCode
+	// Reason is only sent with a 503 UNAVAILABLE, and says why that lookup
+	// has not settled whether a matching transfer exists. It is empty on
+	// every other error, and on an UNAVAILABLE that comes from a failure of
+	// ours rather than of the banking system; handle an empty or unknown
+	// value like ReasonSourceDown.
+	Reason UnavailableReason
 	// Type is the problem type URI, a page that explains the error.
 	Type string
 	// Title is a short summary written for people. It may be in Thai.
@@ -135,13 +157,14 @@ func (e *Error) Error() string {
 }
 
 type problemBody struct {
-	Type     string       `json:"type"`
-	Title    string       `json:"title"`
-	Status   int          `json:"status"`
-	Detail   string       `json:"detail"`
-	Instance string       `json:"instance"`
-	Code     ErrorCode    `json:"code"`
-	Errors   []FieldError `json:"errors"`
+	Type     string            `json:"type"`
+	Title    string            `json:"title"`
+	Status   int               `json:"status"`
+	Detail   string            `json:"detail"`
+	Instance string            `json:"instance"`
+	Code     ErrorCode         `json:"code"`
+	Reason   UnavailableReason `json:"reason"`
+	Errors   []FieldError      `json:"errors"`
 }
 
 const maxErrorBody = 64 << 10
@@ -163,7 +186,7 @@ func readError(resp *http.Response, key string) *Error {
 		var p problemBody
 		if json.Unmarshal(raw, &p) == nil {
 			e.Type, e.Title, e.Detail, e.Instance = p.Type, p.Title, p.Detail, p.Instance
-			e.Code, e.Fields = p.Code, p.Errors
+			e.Code, e.Reason, e.Fields = p.Code, p.Reason, p.Errors
 		}
 	}
 	if e.Title == "" {
