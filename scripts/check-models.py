@@ -41,6 +41,7 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -67,8 +68,18 @@ def load_document(path: str | None, url: str | None) -> dict:
     # whole job into a green light that measured nothing the first time it ran
     # in CI. A plain tool name is enough to be served.
     request = urllib.request.Request(url or DEFAULT_URL, headers={"User-Agent": "checkslip-sdk-model-check"})
-    with urllib.request.urlopen(request, timeout=30) as answer:
-        return json.loads(answer.read().decode())
+    # One reset connection should not fail a release, and this check going red
+    # does block one: a flaky fetch took go 0.9.1 off the module proxy once.
+    last: OSError | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as answer:
+                return json.loads(answer.read().decode())
+        except OSError as error:
+            last = error
+            if attempt < 2:
+                time.sleep(2 * (attempt + 1))
+    raise last if last else OSError("the document could not be read")
 
 
 def schema_fields(schemas: dict, node: object, seen: tuple[str, ...] = ()) -> tuple[dict, set]:
