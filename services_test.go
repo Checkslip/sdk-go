@@ -185,7 +185,7 @@ func TestBillingUsageBanks(t *testing.T) {
 
 func TestWebhookEndpointsAndDeliveries(t *testing.T) {
 	const ep = `{"id":"ep_1","url":"https://shop.test/hooks","description":null,"event_types":["slip.checked"],"enabled":true,"disabled_reason":null,"secret_hint":"…a1b2","created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}`
-	const dl = `{"id":"dl_1","message_id":"msg_1","endpoint_id":"ep_1","event_type":"webhook.test","status":"PENDING","attempt_count":0,"next_attempt_at":"2026-11-01T00:00:00Z","last_attempt_at":null,"last_http_status":null,"created_at":"2026-11-01T00:00:00Z"}`
+	const dl = `{"id":"dl_1","message_id":"msg_1","request_id":null,"endpoint_id":"ep_1","event_type":"webhook.test","status":"PENDING","attempt_count":0,"next_attempt_at":"2026-11-01T00:00:00Z","last_attempt_at":null,"last_http_status":null,"created_at":"2026-11-01T00:00:00Z"}`
 	c, _ := newTestClient(t, routes(t,
 		route{method: "POST", path: "/api/webhooks/endpoints", status: 201,
 			body: strings.TrimSuffix(ep, "}") + `,"secret":"whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"}`},
@@ -276,6 +276,13 @@ func TestWebhookEndpointsAndDeliveries(t *testing.T) {
 	if err != nil || len(page.Items) != 1 {
 		t.Fatalf("deliveries %+v %v", page, err)
 	}
+	// A test message has no lookup behind it, so request_id is null and the
+	// field is nil rather than an empty string: the doc comment tells the
+	// reader not to call GET with it, and nil is what makes that checkable
+	// (checkslip/webhook h-mwp6pbmg810).
+	if page.Items[0].RequestID != nil {
+		t.Errorf("webhook.test delivery request_id = %v, want nil", page.Items[0].RequestID)
+	}
 	types, err := c.Webhooks.EventTypes.List(ctx)
 	if err != nil || len(types) != 1 || !types[0].Subscribable {
 		t.Fatalf("types %+v %v", types, err)
@@ -339,5 +346,22 @@ func TestNoHiddenFields(t *testing.T) {
 				t.Errorf("%s mentions hidden field %q", f, h)
 			}
 		}
+	}
+}
+
+// A delivery for a real lookup carries that lookup's id, which is what a
+// reader passes to GET /api/slips/{request_id}.
+func TestDeliveryCarriesTheLookupID(t *testing.T) {
+	c, _ := newTestClient(t, routes(t,
+		route{method: "GET", path: "/api/webhooks/deliveries/dl_2", status: 200,
+			body: `{"id":"dl_2","message_id":"msg_2","request_id":"0192d4e0-7c1a-7b3e-9f00-1a2b3c4d5e6f","endpoint_id":"ep_1","event_type":"slip.checked","status":"DELIVERED","attempt_count":1,"next_attempt_at":null,"last_attempt_at":"2026-11-01T00:00:05Z","last_http_status":200,"created_at":"2026-11-01T00:00:00Z","payload":"{}","payload_expires_at":null,"attempts":[]}`},
+	))
+
+	d, err := c.Webhooks.Deliveries.Get(context.Background(), "dl_2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.RequestID == nil || *d.RequestID != "0192d4e0-7c1a-7b3e-9f00-1a2b3c4d5e6f" {
+		t.Errorf("request_id = %v", d.RequestID)
 	}
 }

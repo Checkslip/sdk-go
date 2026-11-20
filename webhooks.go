@@ -358,8 +358,14 @@ type Delivery struct {
 	// MessageID is the webhook-id header of the message. It stays the same
 	// on every attempt and resend; deduplicate on it.
 	MessageID string `json:"message_id"`
-	// RequestID is the lookup this message is about.
-	RequestID      string         `json:"request_id"`
+	// RequestID is the id of the lookup whose result this message carries,
+	// the same as data.request_id in the slip.checked message. Use it with
+	// GET /api/slips/{request_id} to read the same result, for example
+	// when the message cannot be resent. It is null for a test message
+	// (webhook.test), which has no result to read, so do not call GET with
+	// it. It is not the X-Request-Id of the request that reads this
+	// delivery.
+	RequestID      *string        `json:"request_id"`
 	EndpointID     string         `json:"endpoint_id"`
 	EventType      EventType      `json:"event_type"`
 	Status         DeliveryStatus `json:"status"`
