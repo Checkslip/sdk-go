@@ -4,6 +4,13 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.9.0](https://github.com/Checkslip/sdk-go/compare/v0.8.0...v0.9.0) (2026-11-20)
+
+
+### Features
+
+* carry the credit lots and the other fields the API already sends ([68702bb](https://github.com/Checkslip/sdk-go/commit/68702bb458d326730c1f02b553c43ba1d4992a24))
+
 ## [0.8.0](https://github.com/Checkslip/sdk-go/compare/v0.7.2...v0.8.0) (2026-11-20)
 
 
