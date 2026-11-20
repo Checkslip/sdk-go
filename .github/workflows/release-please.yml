@@ -53,6 +53,69 @@ jobs:
     permissions:
       contents: read
 
+  # GitHub also records a CI and a Commits run for the release branch that
+  # never start a single job: no steps, no logs, conclusion failure, and no
+  # check runs attached. Nothing is blocked by them, but they put a red cross
+  # on the release pull request, which teaches whoever merges it to ignore red.
+  # verify-release-pr above is the run that really builds that branch, so this
+  # reports that result on the commit as a check and clears the empty runs.
+  report-release-pr:
+    needs: [release-please, verify-release-pr]
+    if: always() && inputs.publish_tag == '' && needs.release-please.outputs.pr_branch != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      checks: write
+      contents: read
+    steps:
+      - name: Report the verification, then clear the empty runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.release-please.outputs.pr_branch }}
+          RESULT: ${{ needs.verify-release-pr.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          sha="$(gh api "repos/$REPO/commits/$BRANCH" --jq .sha)"
+          case "$RESULT" in
+            success) conclusion=success ;;
+            skipped|cancelled) conclusion=neutral ;;
+            *) conclusion=failure ;;
+          esac
+          gh api -X POST "repos/$REPO/check-runs" \
+            -f name='Release PR verified' \
+            -f head_sha="$sha" \
+            -f status=completed \
+            -f conclusion="$conclusion" \
+            -f details_url="$RUN_URL" \
+            -f 'output[title]=The suite ran against this release branch' \
+            -f "output[summary]=A pull request opened with GITHUB_TOKEN raises no events, so this branch gets no checks of its own. The suite ran against it in $RUN_URL and finished: $RESULT." >/dev/null
+          echo "posted 'Release PR verified' ($conclusion) on $sha"
+
+          # Clearing the empty runs is cosmetic, so from here on a failure is
+          # reported and nothing else: a release must not fail over it.
+          set +e
+
+          # The empty records arrive with the pull request, which is a moment
+          # before this job starts.
+          sleep 20
+
+          # Only a run with no jobs at all is removed, so a run that really
+          # tested something can never be deleted here.
+          gh api "repos/$REPO/actions/runs?head_sha=$sha&per_page=100" \
+            --jq '.workflow_runs[] | select(.conclusion == "failure" or .conclusion == "startup_failure") | .id' |
+          while read -r id; do
+            [ -n "$id" ] || continue
+            jobs="$(gh api "repos/$REPO/actions/runs/$id/jobs" --jq .total_count)"
+            if [ "$jobs" = "0" ]; then
+              echo "run $id started no jobs; deleting it"
+              gh api -X DELETE "repos/$REPO/actions/runs/$id" || echo "could not delete run $id"
+            else
+              echo "run $id has $jobs job(s); left alone"
+            fi
+          done
+
   # A release created with GITHUB_TOKEN does not raise the `release` event, so
   # the publish job is called from here instead of waiting for it.
   publish:
