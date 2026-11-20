@@ -80,14 +80,23 @@ jobs:
       # for eleven days (checkslip/billing h-mwp349h7fd1). The document the
       # site serves is the one customers' calls are answered by, so that is
       # what this reads; if it cannot be fetched the script says so and passes.
-      - name: Compare the models with the document the site serves
-        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json
+      # Fetched once, with retries: three separate fetches meant three chances
+      # to be reset, and one reset turned this job red on main, which held go
+      # 0.9.1 back from the module proxy.
+      - name: Fetch the document the site serves
+        run: |
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            --user-agent checkslip-sdk-model-check \
+            --output openapi-published.json https://checkslip.com/openapi.json
+      - name: Compare the models with the document
+        run: python3 scripts/check-models.py --repo . --document openapi-published.json
       # The control: drop a field the document promises and the check above has
       # to go red. A checker that cannot fail is not a checker.
       - name: Prove the check can fail
-        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json --prove
+        run: python3 scripts/check-models.py --repo . --document openapi-published.json --prove
       # The fixtures are the other half: a body we test that the API cannot
       # send is a test of a shape nobody receives, and a body missing a field
       # the API always sends is a field no test has ever seen.
       - name: Compare the fixtures with the document
-        run: python3 scripts/check-models.py --repo . --url https://checkslip.com/openapi.json --fixtures
+        run: python3 scripts/check-models.py --repo . --document openapi-published.json --fixtures
