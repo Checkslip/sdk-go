@@ -4,6 +4,13 @@ All notable changes to this module are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org).
 
+## [0.9.1](https://github.com/Checkslip/sdk-go/compare/v0.9.0...v0.9.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* let a delivery's request_id be null ([6f9655d](https://github.com/Checkslip/sdk-go/commit/6f9655de13b46028028663d6d7d3710b8eaed1e9))
+
 ## [0.9.0](https://github.com/Checkslip/sdk-go/compare/v0.8.0...v0.9.0) (2026-11-20)
 
 
