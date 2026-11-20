@@ -29,3 +29,23 @@ footer a major one. Before 1.0.0 a breaking change bumps the minor.
   replaced: cut the next patch and add a `retract` directive to `go.mod`.
 - Major version 2 and up needs the suffix in both the module path and the tag,
   `github.com/Checkslip/sdk-go/v2` and `v2.0.0`.
+
+## The release pull request
+
+It is opened by release-please with `GITHUB_TOKEN`, and a pull request opened
+that way raises no events, so it gets no checks of its own. Two things follow,
+and both have caught someone out:
+
+- GitHub still records a CI run and a Commits run for the release branch that
+  **start no jobs at all**: no steps, no logs, conclusion failure. They block
+  nothing. The suite is run against that branch by the `verify-release-pr` job
+  in `release-please.yml`, and `report-release-pr` posts that result as the
+  **Release PR verified** check on the branch head, then deletes the empty runs
+  (only ever a run whose job count is zero). Read that check.
+- If you edit the release branch by hand, for example to add a line to
+  `CHANGELOG.md`, the commit subject still has to be a Conventional Commit:
+  `commits.yml` reads **every** commit in the pull request, and on this host
+  `--amend` and force-push are blocked, so a plain-sentence subject cannot be
+  repaired afterwards. Use `docs:`, which is hidden from the changelog. After
+  an edit, run the **Release please** workflow by hand (`workflow_dispatch`
+  with an empty input) so the branch is verified and reported again.
