@@ -63,7 +63,11 @@ RETIRED = {"threshold_basis"}
 def load_document(path: str | None, url: str | None) -> dict:
     if path:
         return json.loads(Path(path).read_text())
-    with urllib.request.urlopen(url or DEFAULT_URL, timeout=30) as answer:
+    # The site answers 403 to urllib's default User-Agent, which turned this
+    # whole job into a green light that measured nothing the first time it ran
+    # in CI. A plain tool name is enough to be served.
+    request = urllib.request.Request(url or DEFAULT_URL, headers={"User-Agent": "checkslip-sdk-model-check"})
+    with urllib.request.urlopen(request, timeout=30) as answer:
         return json.loads(answer.read().decode())
 
 
@@ -359,6 +363,11 @@ def main() -> int:
     parser.add_argument("--url", help=f"fetch the document instead (default {DEFAULT_URL})")
     parser.add_argument("--prove", action="store_true", help="run the control and exit")
     parser.add_argument("--fixtures", action="store_true", help="check the fixture files instead")
+    parser.add_argument(
+        "--allow-unreachable",
+        action="store_true",
+        help="pass instead of failing when the document cannot be read (for an offline run)",
+    )
     arguments = parser.parse_args()
 
     repo = Path(arguments.repo).resolve()
@@ -367,8 +376,12 @@ def main() -> int:
     try:
         document = load_document(arguments.document, arguments.url)
     except OSError as error:
-        print(f"⏭  the API document could not be read ({error}); nothing was checked")
-        return 0
+        if arguments.allow_unreachable:
+            print(f"⏭  the API document could not be read ({error}); nothing was checked")
+            return 0
+        print(f"🔴 the API document could not be read ({error}), so nothing was checked")
+        print("A check that cannot reach the document has to go red, or it is a green light for nothing.")
+        return 1
 
     if arguments.prove:
         return prove(document, repo)
