@@ -51,9 +51,13 @@ type Balance struct {
 	Credits int64 `json:"credits"`
 	// Low is true when Credits has fallen to Threshold or below. Show it as
 	// it is rather than computing your own threshold.
-	Low       bool           `json:"low"`
-	Threshold int64          `json:"threshold"`
-	Basis     ThresholdBasis `json:"threshold_basis"`
+	Low       bool  `json:"low"`
+	Threshold int64 `json:"threshold"`
+	// How Threshold was worked out. Always empty: the API stopped sending
+	// this to customers in November 2026, and the published API reference does
+	// not list this field. There is no replacement field. It stays here so
+	// code that reads it still compiles.
+	Basis ThresholdBasis `json:"threshold_basis"`
 	// ExpiresAt is when the remaining credits expire, or nil.
 	ExpiresAt   *time.Time `json:"expires_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
