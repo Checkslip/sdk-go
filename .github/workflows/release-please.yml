@@ -101,19 +101,30 @@ jobs:
           # before this job starts.
           sleep 20
 
-          # Only a run with no jobs at all is removed, so a run that really
-          # tested something can never be deleted here.
+          # Only a run with no jobs at all is touched, so a run that really
+          # tested something is never approved away or deleted here.
+          #
+          # The empty runs sit in a check suite whose conclusion is
+          # action_required: GitHub is waiting for someone to approve them, not
+          # reporting a failure. Approving is better than deleting, because
+          # then the real suite runs on the pull request itself. If the token
+          # cannot approve its own runs, the empty record is deleted instead so
+          # nothing red is left on the pull request.
           gh api "repos/$REPO/actions/runs?head_sha=$sha&per_page=100" \
-            --jq '.workflow_runs[] | select(.conclusion == "failure" or .conclusion == "startup_failure") | .id' |
+            --jq '.workflow_runs[] | select(.conclusion == "failure" or .conclusion == "startup_failure" or .conclusion == "action_required") | .id' |
           while read -r id; do
             [ -n "$id" ] || continue
             jobs="$(gh api "repos/$REPO/actions/runs/$id/jobs" --jq .total_count)"
-            if [ "$jobs" = "0" ]; then
-              echo "run $id started no jobs; deleting it"
-              gh api -X DELETE "repos/$REPO/actions/runs/$id" || echo "could not delete run $id"
-            else
+            if [ "$jobs" != "0" ]; then
               echo "run $id has $jobs job(s); left alone"
+              continue
             fi
+            if gh api -X POST "repos/$REPO/actions/runs/$id/approve" >/dev/null 2>&1; then
+              echo "run $id started no jobs; approved it, so its checks run here"
+              continue
+            fi
+            echo "run $id started no jobs and could not be approved; deleting it"
+            gh api -X DELETE "repos/$REPO/actions/runs/$id" || echo "could not delete run $id"
           done
 
   # A release created with GITHUB_TOKEN does not raise the `release` event, so
