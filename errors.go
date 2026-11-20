@@ -32,6 +32,7 @@ const (
 
 	// Slip lookup.
 	CodeNoCredit             ErrorCode = "NO_CREDIT"
+	CodeCampaignDailyLimit   ErrorCode = "CAMPAIGN_DAILY_LIMIT"
 	CodeCreditExpired        ErrorCode = "CREDIT_EXPIRED"
 	CodeCreditUnavailable    ErrorCode = "CREDIT_UNAVAILABLE"
 	CodeInvalidQR            ErrorCode = "INVALID_QR"

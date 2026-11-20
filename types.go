@@ -89,18 +89,48 @@ type Party struct {
 	// the bank. Either may be nil.
 	NameTH *string `json:"name_th"`
 	NameEN *string `json:"name_en"`
-	// Account is the part of the account number the bank shows, or nil.
+	// Account is the last 4 digits of the account as the bank shows them.
+	// It can be nil when the bank sends no number, or when the data was
+	// erased (see Slip.NamesErased). Different accounts can share the same
+	// last 4 digits, so do not use it on its own to identify an account.
 	Account *string `json:"account"`
+	// AccountMasked is the account number with most digits hidden, in a
+	// fixed shape that follows the account's length: xxx-x-xxxxx-x for a
+	// 10-digit account and xxx-x-xxxxx-xxx for a 12-digit one. The digits
+	// you see are the ones the bank itself shows, in their real places in
+	// the account number. Which digits, and how many, depends on the
+	// account holder's bank, because each bank hides different digits, for
+	// example xxx-x-x1234-x or 12x-x-xx345-6. The same transfer always
+	// gives the same value. It can be nil when the bank shows no digit, or
+	// when the data was erased (see Slip.NamesErased). Do not use it on its
+	// own to identify an account.
+	AccountMasked *string `json:"account_masked"`
 }
 
 // Receiver is the receiving side of a transfer.
 type Receiver struct {
 	Kind ReceiverKind `json:"kind"`
 	// Bank is nil for some bill payments.
-	Bank    *Bank   `json:"bank"`
-	NameTH  *string `json:"name_th"`
-	NameEN  *string `json:"name_en"`
+	Bank   *Bank   `json:"bank"`
+	NameTH *string `json:"name_th"`
+	NameEN *string `json:"name_en"`
+	// Account is the last 4 digits of the receiver's account as the bank
+	// shows them. It can be nil when the bank sends no number, when Kind is
+	// not BANK_ACCOUNT because the destination is not a bank account, or
+	// when the data was erased (see Slip.NamesErased). Different accounts
+	// can share the same last 4 digits, so do not use it on its own to
+	// identify an account.
 	Account *string `json:"account"`
+	// AccountMasked is the account number with most digits hidden, in a
+	// fixed shape that follows the account's length: xxx-x-xxxxx-x for a
+	// 10-digit account and xxx-x-xxxxx-xxx for a 12-digit one. The digits
+	// you see are the ones the bank itself shows, in their real places in
+	// the account number. Which digits, and how many, depends on the
+	// account holder's bank, because each bank hides different digits, for
+	// example xxx-x-x1234-x or 12x-x-xx345-6. The same transfer always
+	// gives the same value. It can be nil when the bank shows no digit, when Kind is not BANK_ACCOUNT, or when the data was erased (see Slip.NamesErased). Do not use it on its
+	// own to identify an account.
+	AccountMasked *string `json:"account_masked"`
 }
 
 // Slip is the transfer data returned with a lookup.

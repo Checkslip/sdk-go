@@ -52,7 +52,7 @@ func wantKey(t *testing.T, r *http.Request, _ []byte) {
 func TestBillingUsageBanks(t *testing.T) {
 	c, _ := newTestClient(t, routes(t,
 		route{method: "GET", path: "/api/billing/balance", status: 200,
-			body: `{"account_id":"a","credits":120,"low":true,"threshold":150,"expires_at":null,"updated_at":"2026-11-01T00:00:00Z","last_entry_id":null}`},
+			body: `{"account_id":"a","credits":120,"low":true,"threshold":150,"credits_per_year":1800,"expires_at":null,"updated_at":"2026-11-01T00:00:00Z","last_entry_id":null,"next_expires_at":"2027-02-01T00:00:00Z","lots":[{"id":"lot-1","kind":"CAMPAIGN","campaign_id":"c-1","campaign_name":{"th":"โปรเปิดตัว","en":"Launch offer"},"credits_left":20,"granted":50,"expires_at":"2027-02-01T00:00:00Z","usable":true,"usable_today":5},{"id":"lot-2","kind":"PAID","campaign_id":null,"campaign_name":null,"credits_left":100,"granted":null,"expires_at":"2027-11-01T00:00:00Z","usable":true,"usable_today":null}]}`},
 		route{method: "PUT", path: "/api/billing/billing-info", status: 200, body: `{"buyer_type":"COMPANY","name":"ACME","tax_id":"0105555555555"}`,
 			check: func(t *testing.T, r *http.Request, b []byte) {
 				if !strings.Contains(string(b), `"tax_id":"0105555555555"`) {
@@ -60,13 +60,13 @@ func TestBillingUsageBanks(t *testing.T) {
 				}
 			}},
 		route{method: "GET", path: "/api/billing/ledger", status: 200,
-			body: `{"items":[{"id":"e1","delta":-1,"balance_after":119,"reason":"SLIP_CHARGE","created_at":"2026-11-01T00:00:00Z"}],"next_cursor":null}`,
+			body: `{"items":[{"id":"e1","delta":-1,"balance_after":119,"reason":"SLIP_CHARGE","lot_id":"lot-2","created_at":"2026-11-01T00:00:00Z"}],"next_cursor":null}`,
 			check: func(t *testing.T, r *http.Request, _ []byte) {
 				if r.URL.Query().Get("reason") != "PURCHASE,EXPIRE" {
 					t.Errorf("reason %q", r.URL.Query().Get("reason"))
 				}
 			}},
-		route{method: "GET", path: "/api/billing/orders/o1", status: 200, body: `{"id":"o1","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"vat":{"satang":1302,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
+		route{method: "GET", path: "/api/billing/orders/o1", status: 200, body: `{"id":"o1","code":"ORD-7K2M9-4PQR8","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"vat":{"satang":1302,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
 		route{method: "POST", path: "/api/billing/orders/o1/sync", status: 200, body: `{"id":"o1","status":"PAID","package_code":"P1","package_name_th":"x","credits":100,"amount":{"satang":19900,"currency":"THB"},"created_at":"2026-11-01T00:00:00Z"}`},
 		route{method: "GET", path: "/api/billing/packages", status: 200, body: `{"checkout_open":true,"prices_include_vat":true,"vat_rate_bp":700,"items":[{"code":"P1","credits":100,"price":{"satang":19900,"currency":"THB"},"price_total":{"satang":21293,"currency":"THB"},"price_per_credit":{"satang":199,"currency":"THB"},"price_per_credit_baht":"1.990"}]}`},
 		route{method: "GET", path: "/api/billing/receipts/rc1", status: 200, body: `{"id":"rc1","receipt_no":"RC-202611-0001","seller":{"name":"S"},"vat":{"rate_bp":700,"base":{"satang":100,"currency":"THB"},"amount":{"satang":7,"currency":"THB"}},"lines":[{"description":"d","quantity":1,"amount":{"satang":107,"currency":"THB"}}],"total":{"satang":107,"currency":"THB"},"payment_method":"CARD"}`},
@@ -88,6 +88,34 @@ func TestBillingUsageBanks(t *testing.T) {
 	if err != nil || b.Credits != 120 || !b.Low || b.ExpiresAt != nil || b.Basis != "" {
 		t.Fatalf("balance %+v %v", b, err)
 	}
+	// The lots behind that total: a campaign lot that expires first, then the
+	// paid one. Credits is their sum, and NextExpiresAt is the first expiry.
+	if b.CreditsPerYear == nil || *b.CreditsPerYear != 1800 {
+		t.Errorf("credits_per_year = %v", b.CreditsPerYear)
+	}
+	if len(b.Lots) != 2 {
+		t.Fatalf("lots = %+v", b.Lots)
+	}
+	first := b.Lots[0]
+	if first.Kind != LotKindCampaign || first.CreditsLeft != 20 || first.Granted == nil || *first.Granted != 50 {
+		t.Errorf("first lot = %+v", first)
+	}
+	if first.CampaignName == nil || first.CampaignName.EN != "Launch offer" || first.CampaignName.TH != "โปรเปิดตัว" {
+		t.Errorf("campaign name = %+v", first.CampaignName)
+	}
+	if first.UsableToday == nil || *first.UsableToday != 5 || !first.Usable {
+		t.Errorf("campaign lot usability = %+v", first)
+	}
+	// The paid lot has no campaign and no daily number, and nil is not zero:
+	// a caller can tell "no limit" from "nothing left today".
+	paid := b.Lots[1]
+	if paid.Kind != LotKindPaid || paid.CampaignID != nil || paid.CampaignName != nil || paid.Granted != nil || paid.UsableToday != nil {
+		t.Errorf("paid lot = %+v", paid)
+	}
+	// The soonest expiry of the two lots, which is the campaign one.
+	if b.NextExpiresAt == nil || !b.NextExpiresAt.Equal(first.ExpiresAt) {
+		t.Errorf("next_expires_at = %v, want the first lot's %v", b.NextExpiresAt, first.ExpiresAt)
+	}
 	info, err := c.Billing.Info.Update(ctx, &BillingInfo{BuyerType: BuyerCompany, Name: "ACME", TaxID: "0105555555555"})
 	if err != nil || info.Name != "ACME" {
 		t.Fatalf("info %+v %v", info, err)
@@ -96,9 +124,18 @@ func TestBillingUsageBanks(t *testing.T) {
 	if err != nil || len(led.Items) != 1 || led.Items[0].Delta != -1 {
 		t.Fatalf("ledger %+v %v", led, err)
 	}
+	// Which lot the credit came out of, so a reader can match an entry to a
+	// lot in the balance.
+	if led.Items[0].LotID == nil || *led.Items[0].LotID != "lot-2" {
+		t.Errorf("lot_id = %v", led.Items[0].LotID)
+	}
 	o, err := c.Billing.Orders.Get(ctx, "o1")
 	if err != nil || o.Amount.String() != "199.00 THB" {
 		t.Fatalf("order %+v %v", o, err)
+	}
+	// The code a customer sees and can quote, rather than the uuid.
+	if o.Code != "ORD-7K2M9-4PQR8" {
+		t.Errorf("order code = %q", o.Code)
 	}
 	// VAT sits inside Amount. The fixture's 13.02 is the VAT within 199.00,
 	// not on top of it, which is what the field's doc comment promises.

@@ -243,6 +243,25 @@ const (
 	CreditAccountDeleted  CreditReason = "ACCOUNT_DELETED"
 	CreditAccountRestored CreditReason = "ACCOUNT_RESTORED"
 	CreditDevGrant        CreditReason = "DEV_GRANT"
+	CreditCampaignGrant   CreditReason = "CAMPAIGN_GRANT"
+	CreditCampaignExpire  CreditReason = "CAMPAIGN_EXPIRE"
+	CreditCampaignReclaim CreditReason = "CAMPAIGN_RECLAIM"
+)
+
+// LotKind is the kind of a credit lot. New kinds may be added: show an
+// unknown kind as credits with their expiry.
+type LotKind string
+
+// Lot kinds.
+const (
+	// LotKindPaid holds every credit that did not come from a campaign
+	// (bought, trial, adjusted by our team) as one lot per account; a
+	// purchase sets its expiry to at least one year from the payment and
+	// never shortens it.
+	LotKindPaid LotKind = "PAID"
+	// LotKindCampaign holds credits a campaign gave, which expire on that
+	// campaign's own date and are not moved by a purchase.
+	LotKindCampaign LotKind = "CAMPAIGN"
 )
 
 // ThresholdBasis says how Balance.Threshold was computed.

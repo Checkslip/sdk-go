@@ -46,22 +46,96 @@ type BillingReceiptsService struct{ c *Client }
 
 // Balance is the account's credit balance.
 type Balance struct {
+	// AccountID is the account this balance belongs to.
 	AccountID string `json:"account_id"`
-	// Credits is the number of lookups left. One FOUND lookup uses one.
+	// Credits is all the credits the account has now, the sum of
+	// CreditsLeft over every lot in Lots. A slip lookup (looking up the
+	// transfer's data with the bank) uses 1 credit only when a matching
+	// transfer is found.
 	Credits int64 `json:"credits"`
-	// Low is true when Credits has fallen to Threshold or below. Show it as
-	// it is rather than computing your own threshold.
-	Low       bool  `json:"low"`
+	// Low is true when Credits is below Threshold, meaning credits are
+	// running low. It is the same rule as the low-credit email and the web
+	// app, so read this value rather than working it out.
+	Low bool `json:"low"`
+	// Threshold is the credit level below which this account counts as
+	// running low (Low, and the low-credit email). It is set from this
+	// account's own use. 0 means no warning yet (Low is false).
 	Threshold int64 `json:"threshold"`
+	// CreditsPerYear is about how many credits this account would use in a
+	// year at its recent pace. nil means there has not been enough recent
+	// use to tell.
+	CreditsPerYear *int64 `json:"credits_per_year"`
+	// Lots are the lots that still have credits, in the order they are
+	// charged, the next one first. Credits is their sum. Lots with nothing
+	// left are not listed.
+	Lots []CreditLot `json:"lots,omitempty"`
+	// NextExpiresAt is the soonest expiry among lots that still have
+	// credits, the date some of the credits start to expire. nil means no
+	// credits are left.
+	NextExpiresAt *time.Time `json:"next_expires_at"`
 	// How Threshold was worked out. Always empty: the API stopped sending
 	// this to customers in November 2026, and the published API reference does
 	// not list this field. There is no replacement field. It stays here so
 	// code that reads it still compiles.
 	Basis ThresholdBasis `json:"threshold_basis"`
-	// ExpiresAt is when the remaining credits expire, or nil.
-	ExpiresAt   *time.Time `json:"expires_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	LastEntryID *string    `json:"last_entry_id"`
+	// ExpiresAt is the latest expiry among lots that still have credits
+	// (after every lot has run out, it still gives the date of the last
+	// one). nil means credits were never bought or given. For when the
+	// first lot runs out, read NextExpiresAt.
+	ExpiresAt *time.Time `json:"expires_at"`
+	// UpdatedAt is when this balance last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+	// LastEntryID is the id of the latest credit entry this balance already
+	// counts (the same id as in the credit history). nil means there are no
+	// entries yet.
+	LastEntryID *string `json:"last_entry_id"`
+}
+
+// ThEn is one text in two languages; both are always there.
+type ThEn struct {
+	// TH is the text in Thai.
+	TH string `json:"th"`
+	// EN is the text in English.
+	EN string `json:"en"`
+}
+
+// CreditLot is one lot of credits with its own expiry. The account's credits
+// are the sum of its lots. A credit is used only when a matching transfer is
+// found, and it is taken from the usable lot that expires first; when two
+// expire at the same moment, a campaign lot is used before a bought one.
+type CreditLot struct {
+	// ID is this lot's id, the same value as CreditEntry.LotID in the
+	// credit history.
+	ID string `json:"id"`
+	// Kind is the kind of lot. New kinds may be added: show an unknown kind
+	// as credits with their expiry.
+	Kind LotKind `json:"kind"`
+	// CampaignID is the campaign that gave this lot, on CAMPAIGN lots only.
+	// nil on other lots.
+	CampaignID *string `json:"campaign_id"`
+	// CampaignName is the campaign's name in Thai and English, as the
+	// campaign had it when this account claimed (a later rename does not
+	// change it). Both languages always come; pick which one to show for
+	// your user. CAMPAIGN lots only; nil on other lots.
+	CampaignName *ThEn `json:"campaign_name"`
+	// CreditsLeft is the credits this lot has left.
+	CreditsLeft int64 `json:"credits_left"`
+	// Granted, on a CAMPAIGN lot, is how many credits the campaign gave at
+	// the start; with CreditsLeft it shows how many were used. On the PAID
+	// lot it is nil, because that lot grows with every purchase.
+	Granted *int64 `json:"granted"`
+	// ExpiresAt is when the credits left in this lot expire.
+	ExpiresAt time.Time `json:"expires_at"`
+	// Usable is true when a slip lookup can be charged to this lot now.
+	// False when it has expired (and is not yet gone from the list), our
+	// team has paused its use, or a campaign lot has used its daily number
+	// for today (it works again from 00:00 Thailand time). Meanwhile
+	// lookups are charged to another usable lot.
+	Usable bool `json:"usable"`
+	// UsableToday, on a campaign lot with a daily number, is the credits
+	// this lot can still give today, by the Thailand-time day, which starts
+	// again at 00:00. nil means this lot has no daily limit.
+	UsableToday *int64 `json:"usable_today"`
 }
 
 // Get returns the remaining credits, their expiry and whether they are
@@ -123,7 +197,17 @@ type CreditEntry struct {
 	BalanceAfter   int64        `json:"balance_after"`
 	ExpiresAtAfter *time.Time   `json:"expires_at_after,omitempty"`
 	Reason         CreditReason `json:"reason"`
-	FreeReason     FreeReason   `json:"free_reason,omitempty"`
+	// FreeReason says why that slip lookup used no credit, on SLIP_FREE
+	// entries only. The set is open, so we may add new values: when your
+	// code meets a value it does not know, treat it as no credit used
+	// rather than letting it break.
+	FreeReason FreeReason `json:"free_reason,omitempty"`
+	// LotID is the lot this entry added to or took from, the same as a
+	// CreditLot.ID in the balance's Lots. nil on entries that did not
+	// change credits (Delta 0), on entries from before lots existed, and on
+	// entries that changed several lots at once (such as an account
+	// deletion or restore).
+	LotID *string `json:"lot_id"`
 	// RefType and RefID point at what caused the change, such as an order
 	// or a lookup.
 	RefType   string    `json:"ref_type,omitempty"`
@@ -179,7 +263,11 @@ func (s *BillingLedgerService) ListAll(ctx context.Context, params *LedgerParams
 
 // Order is a purchase of credits.
 type Order struct {
-	ID            string      `json:"id"`
+	ID string `json:"id"`
+	// Code is the order's code for people (ORD-XXXXX-XXXXX), to show and to
+	// look the order up instead of ID. Its last character is a check: one
+	// wrong character finds nothing rather than a guess.
+	Code          string      `json:"code"`
 	Status        OrderStatus `json:"status"`
 	PackageCode   string      `json:"package_code"`
 	PackageNameTH string      `json:"package_name_th"`
@@ -297,6 +385,24 @@ type Package struct {
 	ValidityDays int  `json:"validity_days"`
 	ForSale      bool `json:"for_sale"`
 	Sort         int  `json:"sort"`
+	// Offer is a time-limited lower price running now, or nil when there is
+	// none. Price stays the regular price; an order opened before
+	// Offer.EndsAt asks for the offer price, which PriceTotal shows. After
+	// Offer.EndsAt the regular price applies again on its own.
+	Offer *PackageOffer `json:"offer"`
+}
+
+// PackageOffer is the time-limited price of a Package while an offer runs.
+type PackageOffer struct {
+	// Price is the offer price of the package.
+	Price Money `json:"price"`
+	// PricePerCredit is the offer price of one credit.
+	PricePerCredit Money `json:"price_per_credit"`
+	// PricePerCreditBaht is the offer price per credit in baht, as display
+	// text with three decimals.
+	PricePerCreditBaht string `json:"price_per_credit_baht"`
+	// EndsAt is when the offer stops and the regular price applies again.
+	EndsAt time.Time `json:"ends_at"`
 }
 
 // PackageList is the list of credit packages.
@@ -326,9 +432,16 @@ func (s *BillingPackagesService) List(ctx context.Context, opts ...RequestOption
 type Receipt struct {
 	ID string `json:"id"`
 	// SellerReady reports whether the seller details are complete.
-	SellerReady   bool          `json:"seller_ready"`
-	ReceiptNo     string        `json:"receipt_no"`
-	OrderID       string        `json:"order_id"`
+	SellerReady bool   `json:"seller_ready"`
+	ReceiptNo   string `json:"receipt_no"`
+	OrderID     string `json:"order_id"`
+	// OrderCode is the order code (ORD-XXXXX-XXXXX) of this receipt's
+	// order, the same as Order.Code, for referring to the order. The
+	// receipt's legal number is ReceiptNo; never use this code in its
+	// place. Every receipt comes from an order and every order has a code,
+	// so it should always be set; nil means the order's code could not be
+	// read at that moment.
+	OrderCode     *string       `json:"order_code"`
 	IssuedAt      time.Time     `json:"issued_at"`
 	Seller        ReceiptSeller `json:"seller"`
 	Buyer         BillingInfo   `json:"buyer"`

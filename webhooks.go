@@ -357,7 +357,9 @@ type Delivery struct {
 	ID string `json:"id"`
 	// MessageID is the webhook-id header of the message. It stays the same
 	// on every attempt and resend; deduplicate on it.
-	MessageID      string         `json:"message_id"`
+	MessageID string `json:"message_id"`
+	// RequestID is the lookup this message is about.
+	RequestID      string         `json:"request_id"`
 	EndpointID     string         `json:"endpoint_id"`
 	EventType      EventType      `json:"event_type"`
 	Status         DeliveryStatus `json:"status"`
