@@ -15,8 +15,8 @@ import (
 
 const foundJSON = `{"request_id":"0192d4e0-7c1a-7b3e-9f00-1a2b3c4d5e6f","outcome":"FOUND","checked_at":"2026-10-29T10:41:02+07:00",
 "slip":{"trans_ref":"630210534087","transferred_at":"2026-10-29T10:33:30+07:00","amount":{"satang":5000,"currency":"THB"},
-"sender":{"bank":{"code":"KKP","bot_code":"069","name_th":"ธนาคารเกียรตินาคินภัทร","name_en":"Kiatnakin Phatra Bank"},"name_th":"นาย สมชาย ใ","name_en":"MR. SOMCHAI J","account":"0439"},
-"receiver":{"kind":"BANK_ACCOUNT","bank":{"code":"GSB","bot_code":"030","name_th":"ธนาคารออมสิน","name_en":"Government Savings Bank"},"name_th":"นางสาว สมหญิง ร","name_en":"MISS SOMYING R","account":"9681"}},
+"sender":{"bank":{"code":"KKP","bot_code":"069","name_th":"ธนาคารเกียรตินาคินภัทร","name_en":"Kiatnakin Phatra Bank"},"name_th":"นาย สมชาย ใ","name_en":"MR. SOMCHAI J","account":"0439","account_masked":"xxx-x-x0439-x"},
+"receiver":{"kind":"BANK_ACCOUNT","bank":{"code":"GSB","bot_code":"030","name_th":"ธนาคารออมสิน","name_en":"Government Savings Bank"},"name_th":"นางสาว สมหญิง ร","name_en":"MISS SOMYING R","account":"9681","account_masked":"xxx-x-xx968-1"}},
 "client_reference":"order-1001","latency_ms":812,"upstream_ms":640,"checked_elsewhere":true}`
 
 func TestLookupFound(t *testing.T) {
@@ -48,6 +48,14 @@ func TestLookupFound(t *testing.T) {
 	}
 	if got := res.Slip.Amount.String(); got != "50.00 THB" {
 		t.Errorf("amount = %q", got)
+	}
+	// The masked number keeps the digits the bank shows in their real places,
+	// so a reader can show it without guessing the shape.
+	if res.Slip.Sender.AccountMasked == nil || *res.Slip.Sender.AccountMasked != "xxx-x-x0439-x" {
+		t.Errorf("sender account_masked = %v", res.Slip.Sender.AccountMasked)
+	}
+	if res.Slip.Receiver.AccountMasked == nil || *res.Slip.Receiver.AccountMasked != "xxx-x-xx968-1" {
+		t.Errorf("receiver account_masked = %v", res.Slip.Receiver.AccountMasked)
 	}
 	if res.Slip.Sender.Bank.Code != "KKP" || *res.Slip.Receiver.Account != "9681" || res.Slip.Receiver.Kind != ReceiverBankAccount {
 		t.Errorf("parties = %+v / %+v", res.Slip.Sender, res.Slip.Receiver)
