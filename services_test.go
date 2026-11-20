@@ -52,7 +52,7 @@ func wantKey(t *testing.T, r *http.Request, _ []byte) {
 func TestBillingUsageBanks(t *testing.T) {
 	c, _ := newTestClient(t, routes(t,
 		route{method: "GET", path: "/api/billing/balance", status: 200,
-			body: `{"account_id":"a","credits":120,"low":true,"threshold":150,"threshold_basis":"AVG_7_DAYS","expires_at":null,"updated_at":"2026-11-01T00:00:00Z","last_entry_id":null}`},
+			body: `{"account_id":"a","credits":120,"low":true,"threshold":150,"expires_at":null,"updated_at":"2026-11-01T00:00:00Z","last_entry_id":null}`},
 		route{method: "PUT", path: "/api/billing/billing-info", status: 200, body: `{"buyer_type":"COMPANY","name":"ACME","tax_id":"0105555555555"}`,
 			check: func(t *testing.T, r *http.Request, b []byte) {
 				if !strings.Contains(string(b), `"tax_id":"0105555555555"`) {
@@ -83,7 +83,9 @@ func TestBillingUsageBanks(t *testing.T) {
 	ctx := context.Background()
 
 	b, err := c.Billing.Balance.Get(ctx)
-	if err != nil || b.Credits != 120 || !b.Low || b.ExpiresAt != nil || b.Basis != ThresholdAvg7Days {
+	// Basis stays empty: the live answer has carried no threshold_basis since
+	// billing 0.48.0 (9 Nov 2026).
+	if err != nil || b.Credits != 120 || !b.Low || b.ExpiresAt != nil || b.Basis != "" {
 		t.Fatalf("balance %+v %v", b, err)
 	}
 	info, err := c.Billing.Info.Update(ctx, &BillingInfo{BuyerType: BuyerCompany, Name: "ACME", TaxID: "0105555555555"})
