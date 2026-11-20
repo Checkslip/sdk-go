@@ -206,7 +206,15 @@ func ParseWebhookEvent(body []byte) (*WebhookEvent, error) {
 
 // SlipCheckedData is the data of a slip.checked message.
 type SlipCheckedData struct {
-	RequestID string    `json:"request_id"`
+	// RequestID is the id of this lookup, the same request_id you got when
+	// you asked for it. Use it with GET /api/slips/{request_id} to read
+	// the same result. One lookup gives one message per endpoint, so the
+	// same request_id again is the same message sent again.
+	RequestID string `json:"request_id"`
+	// Outcome is the result of the transfer lookup with the bank, with the
+	// same values and meanings as outcome in GET /api/slips/{request_id}.
+	// This message carries the final result of that lookup, and today it
+	// is never PENDING, which is not in use yet.
 	Outcome   Outcome   `json:"outcome"`
 	CheckedAt time.Time `json:"checked_at"`
 	// Channel is API, DASHBOARD or ASSISTANT.
