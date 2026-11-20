@@ -55,10 +55,21 @@ ALIASES = {
     "SlipCheckRecordBase": "SlipCheckRecord",
 }
 
-# Fields that left the customer API and are kept in a model on purpose, with
-# the version that retired them. They are read as "always absent", so they are
-# neither demanded nor missing.
+# Fields that left the customer API and are kept in a model on purpose. They
+# are read as "always absent", so they are neither demanded nor missing.
 RETIRED = {"threshold_basis"}
+
+# (model, field) a model carries although the document has no such field, with
+# the reason it is allowed. Anything else is reported, and a field on the
+# withdrawn list is blocked: the four SDKs agreed never to show those.
+KEPT_ON_PURPOSE = {
+    # kept so code that read it still compiles; always absent now
+    ("Balance", "threshold_basis"),
+    # go uses one struct for the full slip and the summary, so the summary's
+    # two bank fields live on it as well
+    ("Slip", "sender_bank"),
+    ("Slip", "receiver_bank"),
+}
 
 
 def load_document(path: str | None, url: str | None) -> dict:
@@ -197,6 +208,22 @@ def check(document: dict, repo: Path) -> tuple[list[str], list[str], int]:
                 blocking.append(f"{language} {model}.{field} is demanded and the document has no such field")
             elif field not in required:
                 blocking.append(f"{language} {model}.{field} is demanded and the document does not promise it")
+        # A field the document has no place for is surface the API never
+        # answers: it reads as empty for ever, which is the quiet half of this
+        # drift. Rust carried `redactions` and `causation_id` that way, both on
+        # the list the four SDKs agreed never to show.
+        for field in sorted(known - set(properties)):
+            if field in RETIRED or (model, field) in KEPT_ON_PURPOSE or field == "extra":
+                continue
+            if field in WITHDRAWN:
+                blocking.append(
+                    f"{language} {model}.{field} left the customer API and the document has no"
+                    " such field, so it can only ever read as empty"
+                )
+            else:
+                reported.append(
+                    f"{language} {model}.{field} is not in the document at all, so it reads as empty"
+                )
         if composed:
             continue
         for field in sorted(required - known - RETIRED):
